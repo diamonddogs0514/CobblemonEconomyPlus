@@ -17,6 +17,10 @@ out/
 .run/
 
 PRE_1.0_RELEASE_ISSUES.md
+DEV_WORKFLOW.md
+
+# Logs written by unit tests and dev runs (e.g. common/logs)
+logs/
 
 ### Eclipse ###
 .apt_generated
