@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "id": "${mod_id}",
+  "name": "${mod_name}",
+  "description": "${mod_description}",
+  "authors": ["${mod_authors}"],
+  "icon": "icon.png",
+  "version": "${mod_version}",
+  "license": "${mod_license}",
+  "entrypoints": {
+    "main": [
+      "com.diamo.cobblemoneconomyplus.CobblemonEconomyPlusFabric"
+    ],
+    "client": [
+      "com.diamo.cobblemoneconomyplus.CobblemonEconomyPlusFabricClient"
+    ]
+  },
+  "mixins": [
+
+  ],
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "${mc_versions_fabric}",
+    "java": ">=21",
+    "fabric-api": ">=0.116.12+1.21.1",
+    "cobblemon": ">=${cobblemon_version}"
+  }
+}

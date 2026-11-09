@@ -1,0 +1,14 @@
+[versions]
+fabric-loom = "1.16-SNAPSHOT"
+mod-dev-gradle = "2.0.141"
+kotlin = "2.2.20"
+# The version of ParchmentMC
+# See https://parchmentmc.org/docs/getting-started on whether a newer version exists
+parchment = "2024.11.17"
+
+[libraries]
+
+[plugins]
+fabricloom = { id = "fabric-loom", version.ref = "fabric-loom" }
+moddevgradle = { id = "net.neoforged.moddev", version.ref = "mod-dev-gradle" }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

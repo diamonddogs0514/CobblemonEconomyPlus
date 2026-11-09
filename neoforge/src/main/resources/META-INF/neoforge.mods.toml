@@ -1,0 +1,36 @@
+modLoader = "javafml"
+loaderVersion = "${neo_loader_version_range}"
+
+license = "${mod_license}"
+
+[[mods]]
+modId = "${mod_id}"
+version = "${mod_version}"
+displayName = "${mod_name}"
+authors = "${mod_authors}"
+logoFile = "icon.png"
+
+description = '''${mod_description}'''
+
+[[dependencies.${mod_id}]]
+modId = "minecraft"
+type = "required"
+versionRange = "${mc_versions_neo}"
+
+[[dependencies.${mod_id}]]
+modId = "neoforge"
+type = "required"
+versionRange = "${neo_loader_version_range}"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.${mod_id}]]
+modId = "cobblemon"
+type = "required"
+versionRange = "[${cobblemon_version},)"
+ordering = "AFTER"
+side = "BOTH"
+
+# Add mixin configuration like this:
+#[[mixins]]
+#config = "mymod.mixins.json"

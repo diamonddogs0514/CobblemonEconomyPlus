@@ -1,0 +1,3 @@
+# ensure correct line endings for platform-specific files
+./gradlew.bat eol=crlf
+./gradlew eol=lf
