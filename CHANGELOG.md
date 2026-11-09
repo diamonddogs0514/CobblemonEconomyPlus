@@ -20,6 +20,7 @@ First public version.
 - `/cep history <player> [count]` to view a player's latest transactions in game.
 - Versioned saved-data format for future migrations.
 - Network protocol version (`1.0`), enforced by NeoForge.
+- The shop and Trainer Card screens can also be closed with the inventory key (E by default), like the vanilla inventory.
 - `runClient2` development run configuration (Fabric and NeoForge) for local two-player testing.
 - Released under the MIT License.
 - Automated tests for the server-side logic (pricing, saved data, config parsing, inventory space, wire formats, log format).

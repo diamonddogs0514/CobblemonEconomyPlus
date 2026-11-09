@@ -56,6 +56,16 @@ public final class TrainerCardScreen extends Screen {
     }
 
     @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        // The inventory key (E by default, rebindable) closes the card as well as Escape.
+        if (minecraft != null && minecraft.options.keyInventory.matches(keyCode, scanCode)) {
+            onClose();
+            return true;
+        }
+        return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
+    @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
         renderBackground(g, mouseX, mouseY, partialTick);
         LocalPlayer player = Minecraft.getInstance().player;

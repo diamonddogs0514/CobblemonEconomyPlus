@@ -812,6 +812,11 @@ public final class TrainerBoutiqueScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        // Like the vanilla inventory: the inventory key (E by default, rebindable) closes the shop too.
+        if (minecraft != null && minecraft.options.keyInventory.matches(keyCode, scanCode)) {
+            onClose();
+            return true;
+        }
         switch (keyCode) {
             case GLFW.GLFW_KEY_UP -> {
                 selectPosition(selectedPos - 1);
