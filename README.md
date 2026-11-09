@@ -171,6 +171,20 @@ Requires JDK 21.
 
 Output: `build/libs_fabric/` and `build/libs_neoforge/`.
 
+### Testing multiplayer locally
+
+You can run a dedicated server and up to two clients on one machine (use the same loader for all of them):
+
+```powershell
+.\gradlew.bat :neoforge:runServer     # or :fabric:runServer
+.\gradlew.bat :neoforge:runClient     # first player
+.\gradlew.bat :neoforge:runClient2    # second player "Player001", own folder run/client2/
+```
+
+Set `online-mode=false` in `run/server/1.21.1/server.properties` (and accept the EULA in `eula.txt`), then join
+`localhost` from each client. The second client has its own game directory and a 3 GB heap, so the two clients
+do not interfere with each other.
+
 **If you change any network payload, bump `EconomyPayloads.PROTOCOL_VERSION`.**
 NeoForge rejects clients with a different version; Fabric has no equivalent check, so keep versions in sync there.
 

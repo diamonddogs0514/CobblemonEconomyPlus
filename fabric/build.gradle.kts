@@ -65,6 +65,22 @@ loom {
             programArgs("--username", "Player000")
             vmArgs(*vmArgs)
         }
+        // A second development client for local multiplayer tests (e.g. /pay between two players). It uses its own
+        // game directory and player name, and a smaller heap so two clients and a server fit in memory together.
+        create("client2") {
+            client()
+            runDir("../run/client2/${mcVersion}")
+            configName = "Fabric/Client 2"
+            ideConfigGenerated(true)
+            programArgs("--username", "Player001")
+            vmArgs(
+                "-XX:+UseZGC",
+                "-XX:+IgnoreUnrecognizedVMOptions",
+                "-XX:+AllowEnhancedClassRedefinition",
+                "-Xms$gameJvmXms",
+                "-Xmx3G"
+            )
+        }
         named("server") {
             server()
             serverWithGui()

@@ -39,6 +39,21 @@ neoForge {
             ideName = "NeoForge/Client" // match fabric names
             jvmArguments.addAll(*vmArgs)
         }
+        // A second development client for local multiplayer tests (e.g. /pay between two players). It uses its own
+        // game directory and player name, and a smaller heap so two clients and a server fit in memory together.
+        create("Client2") {
+            client()
+            gameDirectory = rootProject.file("run/client2/${mcVersion}")
+            ideName = "NeoForge/Client 2"
+            programArguments.addAll("--username", "Player001")
+            jvmArguments.addAll(
+                "-XX:+UseZGC",
+                "-XX:+IgnoreUnrecognizedVMOptions",
+                "-XX:+AllowEnhancedClassRedefinition",
+                "-Xms$gameJvmXms",
+                "-Xmx3G",
+            )
+        }
         create("Server") {
             server()
             gameDirectory = rootProject.file("run/server/${mcVersion}")

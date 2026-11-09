@@ -169,6 +169,20 @@ JDK 21 が必要です。
 
 出力先: Fabric は `build/libs_fabric/`、NeoForge は `build/libs_neoforge/`。
 
+### ローカルでのマルチプレイ確認
+
+1 台のパソコンで、専用サーバーとクライアントを 2 つまで同時に起動できます(ローダーは全部同じものにしてください)。
+
+```powershell
+.\gradlew.bat :neoforge:runServer     # または :fabric:runServer
+.\gradlew.bat :neoforge:runClient     # 1 人目
+.\gradlew.bat :neoforge:runClient2    # 2 人目(プレイヤー名 Player001、別フォルダ run/client2/)
+```
+
+`run/server/1.21.1/server.properties` で `online-mode=false` にし(`eula.txt` の同意も必要です)、各クライアントから
+`localhost` に接続します。2 つ目のクライアントは、専用のゲームフォルダを使い、メモリも 3 GB に抑えてあるので、
+互いに干渉しません。
+
 **通信形式(パケット)を変えたら、`EconomyPayloads.PROTOCOL_VERSION` を必ず上げてください。**
 NeoForge は版が違うクライアントの接続を拒否します。Fabric には同様の仕組みがないため、版を揃える運用が必要です。
 
