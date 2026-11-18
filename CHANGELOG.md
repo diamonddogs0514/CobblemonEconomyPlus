@@ -6,8 +6,17 @@
 - Remove shopkeeper NPCs with `/cep shopkeeper remove <npcs>` or by Shift + left-clicking one twice with the
   Shop Editor. Both use the new permission node `cobblemon_economy_plus.shopkeeper.remove` (OP 2 by default,
   grantable with LuckPerms). Only entities that are shopkeepers are removed.
+- `/cep shop validate` checks `shops.json` and `item_values.json` without applying them: JSON errors with their
+  line and column, skipped shops and entries, and buy/sell money loops.
+
+### Changed
+- `/cep shop reload` reports problems in chat (up to 5, the rest in the server log) and how many item values were loaded.
 
 ### Fixed
+- A syntax error in `shops.json` (such as a missing comma or a cut-off file) no longer fails with an unexplained error.
+  The file is reported with the error's location, and the shops that were already loaded stay in place instead of being
+  replaced by the built-in defaults. The same applies to `item_values.json`.
+- A shop without an `id`, or whose `entries` is not a list, is skipped on its own instead of discarding the whole file.
 - Shopkeepers can no longer be hit or damaged, including NPCs assigned with `/cep shopkeeper` or the Shop Editor
   and attacks from creative-mode players. Only `/kill` and the void can still remove them.
 

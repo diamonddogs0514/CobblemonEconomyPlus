@@ -46,7 +46,8 @@ Cobblemon に経済の仕組みを加える、Minecraft 1.21.1 向けの Mod で
 | `/cep money add <players> <amount>` | 所持金を増やす | 同上 |
 | `/cep money take <players> <amount>` | 所持金を減らす(不足なら変更しない) | 同上 |
 | `/cep history <player> [件数]` | そのプレイヤーの直近の取引を表示(既定10件・最大50件、UTC) | `cobblemon_economy_plus.history`(OP2) |
-| `/cep shop reload` / `/cep shop list` | ショップ設定の再読込 / 一覧 | `cobblemon_economy_plus.shop`(OP2) |
+| `/cep shop reload` / `/cep shop list` | ショップ設定の再読込 / 一覧。エラーのあるファイルは前の設定のまま | `cobblemon_economy_plus.shop`(OP2) |
+| `/cep shop validate` | shops.json と item_values.json を反映せずに検査(行番号つきのエラー、飛ばした項目、売り買いで儲かる設定) | 同上 |
 | `/cep shopkeeper set <npc> <shop_id>` / `clear <npc>` | NPC にショップを設定 / 解除 | `cobblemon_economy_plus.shopkeeper`(OP2) |
 | `/cep shopkeeper remove <npcs>` | 店員 NPC を削除(選択に含まれる店員以外は無視) | `cobblemon_economy_plus.shopkeeper.remove`(OP2) |
 

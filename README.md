@@ -47,7 +47,8 @@ mainly for multiplayer servers.
 | `/cep money add <players> <amount>` | Add coins | same |
 | `/cep money take <players> <amount>` | Remove coins (unchanged if the player cannot afford it) | same |
 | `/cep history <player> [count]` | Show the player's latest transactions (default 10, max 50, UTC) | `cobblemon_economy_plus.history` (OP 2) |
-| `/cep shop reload` / `/cep shop list` | Reload shop config / list shops | `cobblemon_economy_plus.shop` (OP 2) |
+| `/cep shop reload` / `/cep shop list` | Reload shop config / list shops. A file with errors keeps its previous settings | `cobblemon_economy_plus.shop` (OP 2) |
+| `/cep shop validate` | Check shops.json and item_values.json without applying them (errors with line numbers, skipped entries, buy/sell loops) | same |
 | `/cep shopkeeper set <npc> <shop_id>` / `clear <npc>` | Link / unlink an NPC to a shop | `cobblemon_economy_plus.shopkeeper` (OP 2) |
 | `/cep shopkeeper remove <npcs>` | Delete shopkeeper NPCs (other entities in the selection are skipped) | `cobblemon_economy_plus.shopkeeper.remove` (OP 2) |
 

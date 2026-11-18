@@ -122,6 +122,9 @@ public final class EconomyCommands {
                         .then(Commands.literal("reload")
                                 .executes(context -> reloadShops(context.getSource()))
                         )
+                        .then(Commands.literal("validate")
+                                .executes(context -> validateShops(context.getSource()))
+                        )
                         .then(Commands.literal("list")
                                 .executes(context -> listShops(context.getSource()))
                         )
@@ -325,10 +328,56 @@ public final class EconomyCommands {
 
     // ------------------------------------------------------------------ shops
 
+    /** Problems listed in chat; the rest are only in the server log. */
+    private static final int MAX_PROBLEMS_IN_CHAT = 5;
+
     private static int reloadShops(CommandSourceStack source) {
-        int count = ShopManager.reload(source.getServer());
-        source.sendSuccess(() -> Component.translatable("command.cobblemon_economy_plus.shops_reloaded", count), true);
-        return count;
+        ShopManager.Report report = ShopManager.reload(source.getServer());
+        if (report.ok()) {
+            source.sendSuccess(() -> Component.translatable("command.cobblemon_economy_plus.shops_reloaded",
+                    report.shopCount(), report.itemValueCount()), true);
+        } else {
+            source.sendFailure(Component.translatable("command.cobblemon_economy_plus.shops_reload_failed"));
+        }
+        sendProblems(source, report);
+        return report.ok() ? report.shopCount() : 0;
+    }
+
+    private static int validateShops(CommandSourceStack source) {
+        ShopManager.Report report = ShopManager.validate(source.getServer());
+        if (report.ok() && report.warnings().isEmpty()) {
+            source.sendSuccess(() -> Component.translatable("command.cobblemon_economy_plus.shops_valid",
+                    report.shopCount(), report.itemValueCount()), false);
+            return 1;
+        }
+        Component summary = Component.translatable("command.cobblemon_economy_plus.shops_invalid",
+                report.errors().size(), report.warnings().size());
+        if (report.ok()) {
+            source.sendSuccess(() -> summary, false);
+        } else {
+            source.sendFailure(summary);
+        }
+        sendProblems(source, report);
+        return report.ok() ? 1 : 0;
+    }
+
+    private static void sendProblems(CommandSourceStack source, ShopManager.Report report) {
+        int shown = 0;
+        for (String error : report.errors()) {
+            if (shown++ < MAX_PROBLEMS_IN_CHAT) {
+                source.sendFailure(Component.literal(" - " + error));
+            }
+        }
+        for (String warning : report.warnings()) {
+            if (shown++ < MAX_PROBLEMS_IN_CHAT) {
+                source.sendSystemMessage(Component.literal(" - " + warning).withStyle(ChatFormatting.YELLOW));
+            }
+        }
+        int hidden = report.errors().size() + report.warnings().size() - MAX_PROBLEMS_IN_CHAT;
+        if (hidden > 0) {
+            source.sendSystemMessage(Component.translatable("command.cobblemon_economy_plus.config_more_problems", hidden)
+                    .withStyle(ChatFormatting.GRAY));
+        }
     }
 
     private static int listShops(CommandSourceStack source) {

@@ -4,6 +4,7 @@ import com.diamo.cobblemoneconomyplus.CobblemonEconomyPlus;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -21,6 +22,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 /** Loads per-server shop configuration from config/cobblemon_economy_plus/shops.json. */
 public final class ShopManager {
@@ -30,7 +32,7 @@ public final class ShopManager {
     /** Must not exceed the payload's name limit (EconomyPayloads.MAX_NAME_LENGTH). */
     private static final int MAX_LOCALIZED_JSON_LENGTH = 480;
 
-    private static final String DEFAULT_CONFIG = """
+    static final String DEFAULT_CONFIG = """
             {
               "shops": [
                 {
@@ -171,30 +173,180 @@ public final class ShopManager {
         return Optional.of(availableShops.get(Math.floorMod(currentIndex + direction, availableShops.size())));
     }
 
-    public static synchronized int reload(MinecraftServer server) {
-        Path configPath = configPath(server);
-        try {
-            writeDefaultConfigIfMissing(configPath);
-            Map<String, ShopDefinition> parsed = parse(Files.readString(configPath, StandardCharsets.UTF_8));
-            if (parsed.isEmpty()) {
-                throw new IllegalArgumentException("No valid shops were found");
-            }
-
-            shops = Collections.unmodifiableMap(parsed);
-            loadedFor = server;
-            CobblemonEconomyPlus.LOGGER.info("Loaded {} Cobblemon Economy Plus shop(s) from {}", shops.size(), configPath);
-        } catch (IOException | IllegalArgumentException exception) {
-            shops = Collections.unmodifiableMap(defaultShops());
-            loadedFor = server;
-            CobblemonEconomyPlus.LOGGER.error(
-                    "Could not load shop configuration at {}. Using the built-in fallback shop instead.",
-                    configPath,
-                    exception
-            );
+    /**
+     * Outcome of a reload or validation. {@code errors} are files that could not be used at all (bad JSON, no
+     * valid shops); {@code warnings} are entries that were skipped or adjusted. The counts describe the
+     * shops and item values that are (reload) or would be (validate) in effect.
+     */
+    public record Report(int shopCount, int itemValueCount, List<String> errors, List<String> warnings) {
+        public Report {
+            errors = List.copyOf(errors);
+            warnings = List.copyOf(warnings);
         }
-        loadItemValues(server);
-        warnAboutArbitrage();
-        return shops.size();
+
+        public boolean ok() {
+            return errors.isEmpty();
+        }
+    }
+
+    /** A parsed config file, or why it could not be used ({@code error} is null on success). Never thrown. */
+    record Parsed<T>(T value, String error, List<String> warnings) {
+        boolean ok() {
+            return error == null;
+        }
+    }
+
+    /**
+     * Reloads shops.json and item_values.json. A file that cannot be used (for example a missing comma) leaves
+     * the previously loaded values in place, so a typo never wipes out the live shops. Only when nothing was
+     * loaded yet (server start) do the built-in defaults stand in.
+     */
+    public static synchronized Report reload(MinecraftServer server) {
+        boolean firstLoad = loadedFor != server;
+        List<String> errors = new ArrayList<>();
+        List<String> warnings = new ArrayList<>();
+
+        Parsed<Map<String, ShopDefinition>> parsedShops = readShops(configPath(server), true);
+        warnings.addAll(prefixed("shops.json", parsedShops.warnings()));
+        if (!parsedShops.ok()) {
+            errors.add("shops.json: " + parsedShops.error());
+        }
+        shops = Collections.unmodifiableMap(choose(parsedShops, shops, firstLoad, ShopManager::defaultShops));
+
+        Parsed<Map<ResourceLocation, Long>> parsedValues = readItemValues(itemValuesPath(server), true);
+        warnings.addAll(prefixed("item_values.json", parsedValues.warnings()));
+        if (!parsedValues.ok()) {
+            errors.add("item_values.json: " + parsedValues.error());
+        }
+        itemValues = Collections.unmodifiableMap(choose(parsedValues, itemValues, firstLoad,
+                () -> parseItemValues(DEFAULT_ITEM_VALUES)));
+        loadedFor = server;
+        warnings.addAll(arbitrageWarnings(shops, itemValues));
+
+        Report report = new Report(shops.size(), itemValues.size(), errors, warnings);
+        log(report, firstLoad);
+        return report;
+    }
+
+    /** Checks shops.json and item_values.json without applying them (a dry run of {@link #reload}). */
+    public static synchronized Report validate(MinecraftServer server) {
+        ensureLoaded(server);
+        List<String> errors = new ArrayList<>();
+        List<String> warnings = new ArrayList<>();
+
+        Parsed<Map<String, ShopDefinition>> parsedShops = readShops(configPath(server), false);
+        warnings.addAll(prefixed("shops.json", parsedShops.warnings()));
+        if (!parsedShops.ok()) {
+            errors.add("shops.json: " + parsedShops.error());
+        }
+        Parsed<Map<ResourceLocation, Long>> parsedValues = readItemValues(itemValuesPath(server), false);
+        warnings.addAll(prefixed("item_values.json", parsedValues.warnings()));
+        if (!parsedValues.ok()) {
+            errors.add("item_values.json: " + parsedValues.error());
+        }
+
+        Map<String, ShopDefinition> checkedShops = parsedShops.ok() ? parsedShops.value() : shops;
+        Map<ResourceLocation, Long> checkedValues = parsedValues.ok() ? parsedValues.value() : itemValues;
+        warnings.addAll(arbitrageWarnings(checkedShops, checkedValues));
+        return new Report(checkedShops.size(), checkedValues.size(), errors, warnings);
+    }
+
+    /**
+     * Which values to use after reading a file: the new ones when they parsed, otherwise the previous ones,
+     * or the defaults when there is nothing previous (first load).
+     */
+    static <T> T choose(Parsed<T> parsed, T previous, boolean firstLoad, Supplier<T> defaults) {
+        if (parsed.ok()) {
+            return parsed.value();
+        }
+        return firstLoad ? defaults.get() : previous;
+    }
+
+    private static void log(Report report, boolean firstLoad) {
+        for (String warning : report.warnings()) {
+            CobblemonEconomyPlus.LOGGER.warn(warning);
+        }
+        for (String error : report.errors()) {
+            CobblemonEconomyPlus.LOGGER.error("Could not load {}. {}", error, firstLoad
+                    ? "Using the built-in defaults for this file until it is fixed and reloaded."
+                    : "Keeping the previously loaded values for this file.");
+        }
+        CobblemonEconomyPlus.LOGGER.info("Cobblemon Economy Plus: {} shop(s), {} sellable item value(s) in effect",
+                report.shopCount(), report.itemValueCount());
+    }
+
+    private static List<String> prefixed(String file, List<String> messages) {
+        return messages.stream().map(message -> file + ": " + message).toList();
+    }
+
+    private static Parsed<Map<String, ShopDefinition>> readShops(Path path, boolean createIfMissing) {
+        try {
+            if (createIfMissing) {
+                writeDefaultConfigIfMissing(path);
+            } else if (!Files.exists(path)) {
+                return new Parsed<>(null, "file not found (" + path + "); it is created with defaults on the next reload",
+                        List.of());
+            }
+            return parseShops(Files.readString(path, StandardCharsets.UTF_8));
+        } catch (IOException exception) {
+            return new Parsed<>(null, "could not read " + path + ": " + exception.getMessage(), List.of());
+        }
+    }
+
+    private static Parsed<Map<ResourceLocation, Long>> readItemValues(Path path, boolean createIfMissing) {
+        try {
+            if (!Files.exists(path)) {
+                if (!createIfMissing) {
+                    return new Parsed<>(null, "file not found (" + path + "); it is created with defaults on the next reload",
+                            List.of());
+                }
+                Files.createDirectories(path.getParent());
+                Files.writeString(path, DEFAULT_ITEM_VALUES, StandardCharsets.UTF_8);
+                CobblemonEconomyPlus.LOGGER.info("Created default item values at {}", path);
+            }
+            return parseItemValuesSafely(Files.readString(path, StandardCharsets.UTF_8));
+        } catch (IOException exception) {
+            return new Parsed<>(null, "could not read " + path + ": " + exception.getMessage(), List.of());
+        }
+    }
+
+    /** Parses shops.json text. Never throws: syntax errors and "no valid shops" come back as the error. */
+    static Parsed<Map<String, ShopDefinition>> parseShops(String source) {
+        List<String> warnings = new ArrayList<>();
+        try {
+            Map<String, ShopDefinition> parsed = parse(source, warnings);
+            if (parsed.isEmpty()) {
+                return new Parsed<>(null, "no valid shops were found", warnings);
+            }
+            return new Parsed<>(parsed, null, warnings);
+        } catch (RuntimeException exception) {
+            return new Parsed<>(null, describe(exception), warnings);
+        }
+    }
+
+    /** Parses item_values.json text. Never throws. */
+    static Parsed<Map<ResourceLocation, Long>> parseItemValuesSafely(String source) {
+        List<String> warnings = new ArrayList<>();
+        try {
+            return new Parsed<>(parseItemValues(source, warnings), null, warnings);
+        } catch (RuntimeException exception) {
+            return new Parsed<>(null, describe(exception), warnings);
+        }
+    }
+
+    /** A readable reason, keeping Gson's "at line X column Y" location for syntax errors. */
+    static String describe(RuntimeException exception) {
+        Throwable cause = exception;
+        while (cause.getCause() != null && cause.getCause() != cause) {
+            cause = cause.getCause();
+        }
+        String message = cause.getMessage();
+        if (message == null || message.isBlank()) {
+            message = cause.getClass().getSimpleName();
+        }
+        return exception instanceof JsonParseException || cause instanceof IOException
+                ? "invalid JSON (" + message + ")"
+                : message;
     }
 
     // ------------------------------------------------------------------ selling
@@ -239,24 +391,11 @@ public final class ShopManager {
                 .resolve("item_values.json");
     }
 
-    private static void loadItemValues(MinecraftServer server) {
-        Path path = itemValuesPath(server);
-        try {
-            if (!Files.exists(path)) {
-                Files.createDirectories(path.getParent());
-                Files.writeString(path, DEFAULT_ITEM_VALUES, StandardCharsets.UTF_8);
-                CobblemonEconomyPlus.LOGGER.info("Created default item values at {}", path);
-            }
-            itemValues = Collections.unmodifiableMap(parseItemValues(Files.readString(path, StandardCharsets.UTF_8)));
-            CobblemonEconomyPlus.LOGGER.info("Loaded {} sellable item value(s) from {}", itemValues.size(), path);
-        } catch (IOException | RuntimeException exception) {
-            itemValues = Collections.unmodifiableMap(parseItemValues(DEFAULT_ITEM_VALUES));
-            CobblemonEconomyPlus.LOGGER.error("Could not load item values at {}. Using the built-in defaults instead.",
-                    path, exception);
-        }
+    static Map<ResourceLocation, Long> parseItemValues(String source) {
+        return parseItemValues(source, new ArrayList<>());
     }
 
-    static Map<ResourceLocation, Long> parseItemValues(String source) {
+    static Map<ResourceLocation, Long> parseItemValues(String source, List<String> warnings) {
         JsonElement root = JsonParser.parseString(source);
         if (!root.isJsonObject() || !root.getAsJsonObject().has("values")
                 || !root.getAsJsonObject().get("values").isJsonObject()) {
@@ -267,7 +406,7 @@ public final class ShopManager {
         for (Map.Entry<String, JsonElement> entry : root.getAsJsonObject().getAsJsonObject("values").entrySet()) {
             ResourceLocation itemId = ResourceLocation.tryParse(entry.getKey());
             if (itemId == null || !BuiltInRegistries.ITEM.containsKey(itemId)) {
-                CobblemonEconomyPlus.LOGGER.warn("Skipping item value for unknown item '{}'", entry.getKey());
+                warnings.add("skipped the value for unknown item '" + entry.getKey() + "'");
                 continue;
             }
             try {
@@ -277,26 +416,27 @@ public final class ShopManager {
                 }
                 result.put(itemId, value);
             } catch (RuntimeException exception) {
-                CobblemonEconomyPlus.LOGGER.warn("Skipping invalid item value for '{}': {}", entry.getKey(),
-                        exception.getMessage());
+                warnings.add("skipped the invalid value for '" + entry.getKey() + "': " + exception.getMessage());
             }
         }
         return result;
     }
 
-    /** Warns about shops where selling an item pays more than buying it costs (a buy/sell money loop). */
-    private static void warnAboutArbitrage() {
+    /** Shops where selling an item pays more than buying it costs (a buy/sell money loop). */
+    static List<String> arbitrageWarnings(Map<String, ShopDefinition> shops, Map<ResourceLocation, Long> values) {
+        List<String> warnings = new ArrayList<>();
         for (ShopDefinition shop : shops.values()) {
             for (ShopDefinition.Entry entry : shop.entries()) {
-                long sellPerItem = sellUnitPrice(shop, entry.itemId());
+                Long base = values.get(entry.itemId());
+                long sellPerItem = base == null ? 0L : scaledPrice(base, shop.sellMultiplier());
                 double buyPerItem = entry.price() / (double) entry.amount();
                 if (sellPerItem > 0L && sellPerItem > buyPerItem) {
-                    CobblemonEconomyPlus.LOGGER.warn(
-                            "Shop '{}': {} sells for {} each but costs only {} each to buy - players can profit by buying and selling back",
-                            shop.id(), entry.itemId(), sellPerItem, buyPerItem);
+                    warnings.add("shop '" + shop.id() + "': " + entry.itemId() + " sells for " + sellPerItem
+                            + " each but costs only " + buyPerItem + " each to buy - players can profit by buying and selling back");
                 }
             }
         }
+        return warnings;
     }
 
     public static Path configPath(MinecraftServer server) {
@@ -323,78 +463,98 @@ public final class ShopManager {
     }
 
     static Map<String, ShopDefinition> parse(String source) {
+        return parse(source, new ArrayList<>());
+    }
+
+    /**
+     * Parses shops.json text. Throws only when the file as a whole is unusable (bad JSON, no {@code shops}
+     * array); a broken shop or entry is skipped and reported in {@code warnings}.
+     */
+    static Map<String, ShopDefinition> parse(String source, List<String> warnings) {
         JsonElement rootElement = JsonParser.parseString(source);
         if (!rootElement.isJsonObject()) {
-            throw new IllegalArgumentException("Root JSON value must be an object");
+            throw new IllegalArgumentException("the root JSON value must be an object");
         }
 
-        JsonArray shopArray = rootElement.getAsJsonObject().getAsJsonArray("shops");
-        if (shopArray == null) {
-            throw new IllegalArgumentException("Missing shops array");
+        JsonElement shopsElement = rootElement.getAsJsonObject().get("shops");
+        if (shopsElement == null || !shopsElement.isJsonArray()) {
+            throw new IllegalArgumentException("missing the \"shops\" array");
         }
 
         Map<String, ShopDefinition> result = new LinkedHashMap<>();
-        for (JsonElement shopElement : shopArray) {
+        int index = 0;
+        for (JsonElement shopElement : shopsElement.getAsJsonArray()) {
+            index++;
             if (!shopElement.isJsonObject()) {
-                CobblemonEconomyPlus.LOGGER.warn("Skipping a shop entry that is not an object");
+                warnings.add("skipped shop #" + index + ": it is not an object");
                 continue;
             }
-
-            JsonObject object = shopElement.getAsJsonObject();
-            String id = string(object, "id").toLowerCase(Locale.ROOT);
-            if (!Shopkeeper.isValidShopId(id)) {
-                CobblemonEconomyPlus.LOGGER.warn("Skipping shop with invalid id '{}'", id);
-                continue;
-            }
-
-            String name = localizedText(id, object, "name", id);
-            JsonArray entryArray = object.getAsJsonArray("entries");
-            if (entryArray == null) {
-                CobblemonEconomyPlus.LOGGER.warn("Skipping shop '{}' because it has no entries array", id);
-                continue;
-            }
-
-            List<ShopDefinition.Entry> entries = new ArrayList<>();
-            for (JsonElement entryElement : entryArray) {
-                if (entries.size() >= MAX_ENTRIES_PER_SHOP) {
-                    CobblemonEconomyPlus.LOGGER.warn("Shop '{}' has more than {} entries; extra entries were ignored", id,
-                            MAX_ENTRIES_PER_SHOP);
-                    break;
-                }
-                if (!entryElement.isJsonObject()) {
+            try {
+                ShopDefinition shop = parseShop(shopElement.getAsJsonObject(), warnings);
+                if (result.containsKey(shop.id())) {
+                    warnings.add("skipped shop #" + index + ": the id '" + shop.id() + "' is already used");
                     continue;
                 }
-
-                parseEntry(id, entryElement.getAsJsonObject()).ifPresent(entries::add);
+                result.put(shop.id(), shop);
+            } catch (RuntimeException exception) {
+                warnings.add("skipped shop #" + index + ": " + describe(exception));
             }
-
-            String theme = object.has("theme") && object.get("theme").isJsonPrimitive()
-                    ? object.get("theme").getAsString().toLowerCase(Locale.ROOT)
-                    : ShopThemes.DEFAULT;
-            if (!ShopThemes.isValid(theme)) {
-                CobblemonEconomyPlus.LOGGER.warn("Shop '{}' has unknown theme '{}'; using {}", id, theme, ShopThemes.DEFAULT);
-                theme = ShopThemes.DEFAULT;
-            }
-
-            String subtitle = localizedText(id, object, "subtitle", "");
-
-            double sellMultiplier = 1.0D;
-            if (object.has("sell_multiplier") && object.get("sell_multiplier").isJsonPrimitive()) {
-                try {
-                    sellMultiplier = object.get("sell_multiplier").getAsDouble();
-                } catch (NumberFormatException exception) {
-                    sellMultiplier = Double.NaN;
-                }
-                if (Double.isNaN(sellMultiplier) || sellMultiplier < 0.0D || sellMultiplier > MAX_SELL_MULTIPLIER) {
-                    CobblemonEconomyPlus.LOGGER.warn("Shop '{}' has an invalid sell_multiplier; it must be 0 to {}. Using 1.0",
-                            id, MAX_SELL_MULTIPLIER);
-                    sellMultiplier = 1.0D;
-                }
-            }
-
-            result.put(id, new ShopDefinition(id, name, theme, subtitle, sellMultiplier, entries));
         }
         return result;
+    }
+
+    private static ShopDefinition parseShop(JsonObject object, List<String> warnings) {
+        String id = string(object, "id").toLowerCase(Locale.ROOT);
+        if (!Shopkeeper.isValidShopId(id)) {
+            throw new IllegalArgumentException("invalid id '" + id + "' (use a-z, 0-9, _ and -, up to 32 characters)");
+        }
+
+        String name = localizedText(id, object, "name", id, warnings);
+        JsonElement entriesElement = object.get("entries");
+        if (entriesElement == null || !entriesElement.isJsonArray()) {
+            throw new IllegalArgumentException("shop '" + id + "' has no \"entries\" array");
+        }
+
+        List<ShopDefinition.Entry> entries = new ArrayList<>();
+        int entryIndex = 0;
+        for (JsonElement entryElement : entriesElement.getAsJsonArray()) {
+            entryIndex++;
+            if (entries.size() >= MAX_ENTRIES_PER_SHOP) {
+                warnings.add("shop '" + id + "' has more than " + MAX_ENTRIES_PER_SHOP + " entries; the rest were ignored");
+                break;
+            }
+            if (!entryElement.isJsonObject()) {
+                warnings.add("shop '" + id + "': skipped entry #" + entryIndex + ": it is not an object");
+                continue;
+            }
+            parseEntry(id, entryIndex, entryElement.getAsJsonObject(), warnings).ifPresent(entries::add);
+        }
+
+        String theme = object.has("theme") && object.get("theme").isJsonPrimitive()
+                ? object.get("theme").getAsString().toLowerCase(Locale.ROOT)
+                : ShopThemes.DEFAULT;
+        if (!ShopThemes.isValid(theme)) {
+            warnings.add("shop '" + id + "' has unknown theme '" + theme + "'; using " + ShopThemes.DEFAULT);
+            theme = ShopThemes.DEFAULT;
+        }
+
+        String subtitle = localizedText(id, object, "subtitle", "", warnings);
+
+        double sellMultiplier = 1.0D;
+        if (object.has("sell_multiplier")) {
+            try {
+                sellMultiplier = object.get("sell_multiplier").getAsDouble();
+            } catch (RuntimeException exception) {
+                sellMultiplier = Double.NaN;
+            }
+            if (Double.isNaN(sellMultiplier) || sellMultiplier < 0.0D || sellMultiplier > MAX_SELL_MULTIPLIER) {
+                warnings.add("shop '" + id + "' has an invalid sell_multiplier; it must be 0 to " + MAX_SELL_MULTIPLIER
+                        + ". Using 1.0");
+                sellMultiplier = 1.0D;
+            }
+        }
+
+        return new ShopDefinition(id, name, theme, subtitle, sellMultiplier, entries);
     }
 
     /**
@@ -402,42 +562,44 @@ public final class ShopManager {
      * ({@code {"en_us": "...", "ja_jp": "..."}}). Objects are kept as compact JSON and resolved
      * per viewer by {@link LocalizedText}.
      */
-    private static String localizedText(String shopId, JsonObject object, String key, String fallback) {
+    private static String localizedText(String shopId, JsonObject object, String key, String fallback,
+                                        List<String> warnings) {
         if (!object.has(key)) {
             return fallback;
         }
         JsonElement element = object.get(key);
         if (element.isJsonPrimitive()) {
-            return truncate(shopId, key, element.getAsString());
+            return truncate(shopId, key, element.getAsString(), warnings);
         }
         if (element.isJsonObject()) {
             JsonObject compact = new JsonObject();
             for (Map.Entry<String, JsonElement> entry : element.getAsJsonObject().entrySet()) {
                 if (entry.getValue().isJsonPrimitive()) {
                     compact.addProperty(entry.getKey().toLowerCase(Locale.ROOT),
-                            truncate(shopId, key, entry.getValue().getAsString()));
+                            truncate(shopId, key, entry.getValue().getAsString(), warnings));
                 }
             }
             String json = compact.toString();
             if (json.length() <= MAX_LOCALIZED_JSON_LENGTH && !compact.isEmpty()) {
                 return json;
             }
-            CobblemonEconomyPlus.LOGGER.warn("Shop '{}' field '{}' is empty or too long; using one language only", shopId, key);
+            warnings.add("shop '" + shopId + "' field '" + key + "' is empty or too long; using one language only");
             String single = LocalizedText.resolve(json, "en_us");
-            return truncate(shopId, key, single.startsWith("{") ? fallback : single);
+            return truncate(shopId, key, single.startsWith("{") ? fallback : single, warnings);
         }
         return fallback;
     }
 
-    private static String truncate(String shopId, String key, String value) {
+    private static String truncate(String shopId, String key, String value, List<String> warnings) {
         if (value.length() <= MAX_DISPLAY_NAME_LENGTH) {
             return value;
         }
-        CobblemonEconomyPlus.LOGGER.warn("Truncating '{}' for shop '{}' to {} characters", key, shopId, MAX_DISPLAY_NAME_LENGTH);
+        warnings.add("shop '" + shopId + "' field '" + key + "' was cut to " + MAX_DISPLAY_NAME_LENGTH + " characters");
         return value.substring(0, MAX_DISPLAY_NAME_LENGTH);
     }
 
-    private static Optional<ShopDefinition.Entry> parseEntry(String shopId, JsonObject object) {
+    private static Optional<ShopDefinition.Entry> parseEntry(String shopId, int index, JsonObject object,
+                                                             List<String> warnings) {
         try {
             ResourceLocation itemId = ResourceLocation.tryParse(string(object, "item"));
             int amount = integer(object, "amount");
@@ -452,8 +614,8 @@ public final class ShopManager {
                 throw new IllegalArgumentException("price must be zero or positive");
             }
             return Optional.of(new ShopDefinition.Entry(itemId, amount, price));
-        } catch (IllegalArgumentException exception) {
-            CobblemonEconomyPlus.LOGGER.warn("Skipping invalid entry in shop '{}': {}", shopId, exception.getMessage());
+        } catch (RuntimeException exception) {
+            warnings.add("shop '" + shopId + "': skipped entry #" + index + ": " + describe(exception));
             return Optional.empty();
         }
     }

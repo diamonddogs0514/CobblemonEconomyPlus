@@ -94,6 +94,22 @@ class ShopManagerTest {
     }
 
     @Test
+    void everyDefaultShopHasADistinctEnglishAndJapaneseName() {
+        // Regression: a shop title shipped in Japanese only shows up untranslated for English players.
+        Map<String, ShopDefinition> shops = ShopManager.parse(ShopManager.DEFAULT_CONFIG);
+        assertFalse(shops.isEmpty());
+        for (ShopDefinition shop : shops.values()) {
+            String english = LocalizedText.resolve(shop.displayName(), "en_us");
+            String japanese = LocalizedText.resolve(shop.displayName(), "ja_jp");
+            assertFalse(english.isBlank(), "no English name for shop '" + shop.id() + "'");
+            assertFalse(japanese.isBlank(), "no Japanese name for shop '" + shop.id() + "'");
+            assertTrue(english.chars().noneMatch(c -> c >= 0x3040 && c <= 0x9FFF),
+                    "the English name of '" + shop.id() + "' contains Japanese: " + english);
+            assertTrue(!english.equals(japanese), "English and Japanese names of '" + shop.id() + "' are identical");
+        }
+    }
+
+    @Test
     void invalidThemeAndMultiplierFallBackToDefaults() {
         ShopDefinition shop = ShopManager.parse("""
                 { "shops": [ {
@@ -152,6 +168,81 @@ class ShopManagerTest {
     void rootMustBeAnObjectWithAShopsArray() {
         assertThrows(IllegalArgumentException.class, () -> ShopManager.parse("[]"));
         assertThrows(IllegalArgumentException.class, () -> ShopManager.parse("{}"));
+    }
+
+    // ------------------------------------------------------------------ broken files
+
+    private static final String TWO_SHOPS = """
+            { "shops": [
+                { "id": "a", "entries": [ { "item": "minecraft:apple", "amount": 1, "price": 5 } ] },
+                { "id": "b", "entries": [] }
+            ] }
+            """;
+
+    @Test
+    void aMissingCommaIsReportedWithItsLocationInsteadOfThrowing() {
+        String broken = TWO_SHOPS.replace("\"amount\": 1,", "\"amount\": 1");
+        ShopManager.Parsed<Map<String, ShopDefinition>> parsed = ShopManager.parseShops(broken);
+        assertFalse(parsed.ok());
+        assertTrue(parsed.error().startsWith("invalid JSON"), parsed.error());
+        assertTrue(parsed.error().contains("line 2"), parsed.error());
+    }
+
+    @Test
+    void aTruncatedOrEmptyFileIsReportedInsteadOfThrowing() {
+        assertFalse(ShopManager.parseShops(TWO_SHOPS.substring(0, TWO_SHOPS.length() / 2)).ok());
+        assertFalse(ShopManager.parseShops("").ok());
+        assertFalse(ShopManager.parseShops("{ \"shops\": [] }").ok(), "a file without any valid shop is an error");
+    }
+
+    @Test
+    void aValidFileParsesWithoutErrorsOrWarnings() {
+        ShopManager.Parsed<Map<String, ShopDefinition>> parsed = ShopManager.parseShops(TWO_SHOPS);
+        assertTrue(parsed.ok());
+        assertEquals(java.util.Set.of("a", "b"), parsed.value().keySet());
+        assertTrue(parsed.warnings().isEmpty(), parsed.warnings().toString());
+    }
+
+    @Test
+    void oneBrokenShopIsSkippedAndTheOthersAreKept() {
+        ShopManager.Parsed<Map<String, ShopDefinition>> parsed = ShopManager.parseShops("""
+                { "shops": [
+                    { "entries": [] },
+                    { "id": "list", "entries": {} },
+                    { "id": "good", "entries": [ { "item": "minecraft:nope", "amount": 1, "price": 1 } ] },
+                    { "id": "good", "entries": [] }
+                ] }
+                """);
+        assertTrue(parsed.ok());
+        assertEquals(java.util.Set.of("good"), parsed.value().keySet());
+        // missing id, entries not an array, unknown item, duplicate id
+        assertEquals(4, parsed.warnings().size(), parsed.warnings().toString());
+    }
+
+    @Test
+    void brokenItemValuesAreReportedInsteadOfThrowing() {
+        assertFalse(ShopManager.parseItemValuesSafely("{ \"values\": { \"minecraft:apple\": 2 \"minecraft:bread\": 3 } }").ok());
+        ShopManager.Parsed<Map<ResourceLocation, Long>> parsed =
+                ShopManager.parseItemValuesSafely("{ \"values\": { \"minecraft:apple\": 2, \"minecraft:nope\": 3 } }");
+        assertTrue(parsed.ok());
+        assertEquals(Map.of(id("minecraft:apple"), 2L), parsed.value());
+        assertEquals(1, parsed.warnings().size());
+    }
+
+    @Test
+    void aFailedReloadKeepsThePreviousValuesAndOnlyTheFirstLoadFallsBackToDefaults() {
+        ShopManager.Parsed<String> failed = new ShopManager.Parsed<>(null, "broken", java.util.List.of());
+        ShopManager.Parsed<String> fresh = new ShopManager.Parsed<>("new", null, java.util.List.of());
+        assertEquals("previous", ShopManager.choose(failed, "previous", false, () -> "defaults"));
+        assertEquals("defaults", ShopManager.choose(failed, "previous", true, () -> "defaults"));
+        assertEquals("new", ShopManager.choose(fresh, "previous", false, () -> "defaults"));
+    }
+
+    @Test
+    void buyAndSellLoopsAreReported() {
+        Map<String, ShopDefinition> shops = ShopManager.parse(TWO_SHOPS);
+        assertEquals(1, ShopManager.arbitrageWarnings(shops, Map.of(id("minecraft:apple"), 6L)).size());
+        assertTrue(ShopManager.arbitrageWarnings(shops, Map.of(id("minecraft:apple"), 5L)).isEmpty());
     }
 
     @Test
