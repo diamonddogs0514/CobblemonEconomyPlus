@@ -25,6 +25,7 @@ class EconomyPermissionTest {
         assertEquals(2, EconomyPermission.MONEY.defaultLevel());
         assertEquals(2, EconomyPermission.SHOP.defaultLevel());
         assertEquals(2, EconomyPermission.SHOPKEEPER.defaultLevel());
+        assertEquals(2, EconomyPermission.SHOPKEEPER_REMOVE.defaultLevel());
         assertEquals(2, EconomyPermission.EDITOR.defaultLevel());
         assertEquals(2, EconomyPermission.HISTORY.defaultLevel());
     }
@@ -38,6 +39,7 @@ class EconomyPermissionTest {
         assertEquals("cobblemon_economy_plus.money", EconomyPermission.MONEY.fullNode());
         assertEquals("cobblemon_economy_plus.shop", EconomyPermission.SHOP.fullNode());
         assertEquals("cobblemon_economy_plus.shopkeeper", EconomyPermission.SHOPKEEPER.fullNode());
+        assertEquals("cobblemon_economy_plus.shopkeeper.remove", EconomyPermission.SHOPKEEPER_REMOVE.fullNode());
         assertEquals("cobblemon_economy_plus.editor", EconomyPermission.EDITOR.fullNode());
         assertEquals("cobblemon_economy_plus.history", EconomyPermission.HISTORY.fullNode());
     }

@@ -3,6 +3,8 @@ package com.diamo.cobblemoneconomyplus;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
+import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
@@ -17,6 +19,7 @@ import com.diamo.cobblemoneconomyplus.network.EconomyPayloads;
 import com.diamo.cobblemoneconomyplus.platform.PlatformNetworking;
 import com.diamo.cobblemoneconomyplus.shop.ShopManager;
 import com.diamo.cobblemoneconomyplus.shop.ShopService;
+import com.diamo.cobblemoneconomyplus.shop.Shopkeeper;
 
 public final class CobblemonEconomyPlusFabric implements ModInitializer {
     @Override
@@ -39,9 +42,26 @@ public final class CobblemonEconomyPlusFabric implements ModInitializer {
                 context.server().execute(() -> ShopService.handleSale(context.player(), payload))
         );
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> EconomyService.sync(handler.player));
-        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> ShopService.onDisconnect(handler.player.getUUID()));
+        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
+            ShopService.onDisconnect(handler.player.getUUID());
+            ShopEditorItem.onDisconnect(handler.player.getUUID());
+        });
         ServerLifecycleEvents.SERVER_STARTED.register(ShopManager::reload);
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> EconomyCommands.register(dispatcher));
+
+        // Scoreboard tags are server-side only, so the attack is cancelled on the server.
+        AttackEntityCallback.EVENT.register((player, level, hand, entity, hitResult) -> {
+            if (level.isClientSide() || !Shopkeeper.isShopkeeper(entity)) {
+                return InteractionResult.PASS;
+            }
+            if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+                ShopEditorItem.tryRemove(serverPlayer, entity);
+            }
+            return InteractionResult.FAIL;
+        });
+        ServerLivingEntityEvents.ALLOW_DAMAGE.register((entity, source, amount) ->
+                !Shopkeeper.blocksDamage(entity, source)
+        );
 
         UseEntityCallback.EVENT.register((player, level, hand, entity, hitResult) -> {
             if (hand != InteractionHand.MAIN_HAND) {

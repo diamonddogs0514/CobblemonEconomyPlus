@@ -21,17 +21,26 @@ import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.Level;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 /**
  * Operator tool for configuring a shopkeeper NPC.
  *
  * <p>Two modes, toggled by right-clicking in the air: <b>Shop</b> mode (default) cycles which shop the NPC
  * sells, <b>Theme</b> mode cycles the shop GUI's look. Right-click an NPC to go forward, Shift + right-click
- * to go back.</p>
+ * to go back. Shift + left-click a shopkeeper twice removes it.</p>
  */
 public final class ShopEditorItem extends Item {
     private static final String THEME_MODE_KEY = "theme_mode";
+    /** How long a Shift + left-click stays armed before the second click must be repeated (5 seconds). */
+    private static final long REMOVE_CONFIRM_TICKS = 100;
+    private static final Map<UUID, PendingRemoval> PENDING_REMOVALS = new HashMap<>();
+
+    private record PendingRemoval(UUID target, long armedAt) {
+    }
 
     public ShopEditorItem(Properties properties) {
         super(properties.stacksTo(1));
@@ -44,6 +53,8 @@ public final class ShopEditorItem extends Item {
         tooltip.add(Component.translatable("item.cobblemon_economy_plus.shop_editor.reverse_tooltip")
                 .withStyle(ChatFormatting.DARK_GRAY));
         tooltip.add(Component.translatable("item.cobblemon_economy_plus.shop_editor.mode_tooltip")
+                .withStyle(ChatFormatting.DARK_GRAY));
+        tooltip.add(Component.translatable("item.cobblemon_economy_plus.shop_editor.remove_tooltip")
                 .withStyle(ChatFormatting.DARK_GRAY));
         tooltip.add(Component.translatable("item.cobblemon_economy_plus.shop_editor.current_mode",
                 modeName(isThemeMode(stack))).withStyle(ChatFormatting.YELLOW));
@@ -74,6 +85,47 @@ public final class ShopEditorItem extends Item {
         return Component.translatable(themeMode
                 ? "item.cobblemon_economy_plus.shop_editor.mode_theme"
                 : "item.cobblemon_economy_plus.shop_editor.mode_shop");
+    }
+
+    /**
+     * Handles a left-click on an entity with the editor in the main hand. Shift + left-click on a shopkeeper
+     * arms the removal; doing it again on the same NPC within {@link #REMOVE_CONFIRM_TICKS} deletes it.
+     * A plain left-click on a shopkeeper only shows that hint.
+     *
+     * @return true when the click was about a shopkeeper and the attack should be cancelled
+     */
+    public static boolean tryRemove(ServerPlayer player, Entity target) {
+        if (!isEditor(player.getMainHandItem()) || !Shopkeeper.isShopkeeper(target)) {
+            return false;
+        }
+        if (!EconomyPermissions.has(player, EconomyPermission.SHOPKEEPER_REMOVE)) {
+            player.displayClientMessage(Component.translatable("message.cobblemon_economy_plus.editor_remove_no_permission"), true);
+            return true;
+        }
+        if (!player.isShiftKeyDown()) {
+            player.displayClientMessage(Component.translatable("message.cobblemon_economy_plus.editor_remove_hint"), true);
+            return true;
+        }
+
+        long now = player.serverLevel().getGameTime();
+        PendingRemoval pending = PENDING_REMOVALS.get(player.getUUID());
+        if (pending == null || !pending.target().equals(target.getUUID()) || now - pending.armedAt() > REMOVE_CONFIRM_TICKS) {
+            PENDING_REMOVALS.put(player.getUUID(), new PendingRemoval(target.getUUID(), now));
+            player.displayClientMessage(Component.translatable("message.cobblemon_economy_plus.editor_remove_confirm",
+                    target.getDisplayName()).withStyle(ChatFormatting.RED), true);
+            return true;
+        }
+
+        PENDING_REMOVALS.remove(player.getUUID());
+        Component name = target.getDisplayName();
+        if (Shopkeeper.remove(target)) {
+            player.displayClientMessage(Component.translatable("command.cobblemon_economy_plus.shopkeeper_removed", name), true);
+        }
+        return true;
+    }
+
+    public static void onDisconnect(UUID playerId) {
+        PENDING_REMOVALS.remove(playerId);
     }
 
     /** Consumes an editor interaction: cycles the NPC's shop or theme depending on the editor's mode. */

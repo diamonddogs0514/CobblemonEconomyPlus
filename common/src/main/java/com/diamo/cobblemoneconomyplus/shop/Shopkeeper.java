@@ -1,5 +1,11 @@
 package com.diamo.cobblemoneconomyplus.shop;
 
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.tags.DamageTypeTags;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -33,6 +39,33 @@ public final class Shopkeeper {
 
     public static boolean isShopkeeper(Entity entity) {
         return canBeShopkeeper(entity) && shopId(entity).isPresent();
+    }
+
+    /**
+     * Shopkeepers ignore every damage source (players in any game mode, mobs, fire, falls,
+     * explosions) except those that bypass invulnerability, such as {@code /kill} and the void,
+     * so operators can still remove them on purpose.
+     */
+    public static boolean blocksDamage(Entity entity, DamageSource source) {
+        return isShopkeeper(entity) && !source.is(DamageTypeTags.BYPASSES_INVULNERABILITY);
+    }
+
+    /**
+     * Deletes a shopkeeper NPC from the world with a puff of smoke. Entities that are not shopkeepers are
+     * left alone, so a careless selector cannot wipe out ordinary mobs.
+     */
+    public static boolean remove(Entity entity) {
+        if (!isShopkeeper(entity)) {
+            return false;
+        }
+        if (entity.level() instanceof ServerLevel level) {
+            level.sendParticles(ParticleTypes.POOF, entity.getX(), entity.getY(0.5), entity.getZ(),
+                    20, entity.getBbWidth() / 2, entity.getBbHeight() / 2, entity.getBbWidth() / 2, 0.02);
+            level.playSound(null, entity.getX(), entity.getY(), entity.getZ(),
+                    SoundEvents.ITEM_PICKUP, SoundSource.NEUTRAL, 0.8F, 0.6F);
+        }
+        entity.discard();
+        return true;
     }
 
     public static boolean setShop(Entity entity, String shopId) {

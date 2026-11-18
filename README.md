@@ -49,9 +49,11 @@ mainly for multiplayer servers.
 | `/cep history <player> [count]` | Show the player's latest transactions (default 10, max 50, UTC) | `cobblemon_economy_plus.history` (OP 2) |
 | `/cep shop reload` / `/cep shop list` | Reload shop config / list shops | `cobblemon_economy_plus.shop` (OP 2) |
 | `/cep shopkeeper set <npc> <shop_id>` / `clear <npc>` | Link / unlink an NPC to a shop | `cobblemon_economy_plus.shopkeeper` (OP 2) |
+| `/cep shopkeeper remove <npcs>` | Delete shopkeeper NPCs (other entities in the selection are skipped) | `cobblemon_economy_plus.shopkeeper.remove` (OP 2) |
 
 - Player arguments are **player names (offline players work too)**; selectors such as `@a` match online players.
-- Using the Shop Editor item requires `cobblemon_economy_plus.editor` (OP 2).
+- Using the Shop Editor item requires `cobblemon_economy_plus.editor` (OP 2). Removing shopkeepers with it
+  (Shift + left-click twice) requires `cobblemon_economy_plus.shopkeeper.remove`.
 - The defaults in parentheses apply when no permission manager has an opinion (OP level 2 = a command-capable admin).
 
 ## Permissions (LuckPerms etc.)
@@ -117,13 +119,17 @@ between *Change shop* and *Change theme* mode, then right-click an NPC for the n
 ### Shopkeepers
 
 - The **Shopkeeper Spawn Egg** (creative tab) spawns a villager already linked to the `general` shop; it stays in place
-  and survives ordinary damage.
+  and cannot be hurt.
 - To turn any living NPC into a shopkeeper:
 
 ```mcfunction
 /cep shopkeeper set @e[type=minecraft:villager,limit=1,sort=nearest] trainer_boutique
 /cep shopkeeper clear @e[type=minecraft:villager,limit=1,sort=nearest]
 ```
+
+- Any shopkeeper (including NPCs linked with the command) ignores attacks and damage; only `/kill` and the void bypass this.
+- To delete a shopkeeper, Shift + left-click it twice with the Shop Editor (within 5 seconds), or run
+  `/cep shopkeeper remove @e[tag=cep_shop:general]` and similar. `clear` only unlinks the shop and keeps the NPC.
 
 Shopkeepers are linked through scoreboard tags.
 

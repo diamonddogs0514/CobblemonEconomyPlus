@@ -127,8 +127,19 @@ public final class EconomyCommands {
                         )
                 )
                 .then(Commands.literal("shopkeeper")
-                        .requires(source -> EconomyPermissions.has(source, EconomyPermission.SHOPKEEPER))
+                        .requires(source -> EconomyPermissions.has(source, EconomyPermission.SHOPKEEPER)
+                                || EconomyPermissions.has(source, EconomyPermission.SHOPKEEPER_REMOVE))
+                        .then(Commands.literal("remove")
+                                .requires(source -> EconomyPermissions.has(source, EconomyPermission.SHOPKEEPER_REMOVE))
+                                .then(Commands.argument("npcs", EntityArgument.entities())
+                                        .executes(context -> removeShopkeepers(
+                                                context.getSource(),
+                                                EntityArgument.getEntities(context, "npcs")
+                                        ))
+                                )
+                        )
                         .then(Commands.literal("set")
+                                .requires(source -> EconomyPermissions.has(source, EconomyPermission.SHOPKEEPER))
                                 .then(Commands.argument("npc", EntityArgument.entity())
                                         .then(Commands.argument("shop", StringArgumentType.word())
                                                 .executes(context -> setShopkeeper(
@@ -140,6 +151,7 @@ public final class EconomyCommands {
                                 )
                         )
                         .then(Commands.literal("clear")
+                                .requires(source -> EconomyPermissions.has(source, EconomyPermission.SHOPKEEPER))
                                 .then(Commands.argument("npc", EntityArgument.entity())
                                         .executes(context -> clearShopkeeper(
                                                 context.getSource(),
@@ -344,6 +356,29 @@ public final class EconomyCommands {
                 shopId
         ), true);
         return 1;
+    }
+
+    /** Deletes the selected NPCs that are shopkeepers; any other entity in the selection is skipped. */
+    private static int removeShopkeepers(CommandSourceStack source, Collection<? extends Entity> targets) {
+        int removed = 0;
+        Component single = null;
+        for (Entity target : List.copyOf(targets)) {
+            Component name = target.getDisplayName();
+            if (Shopkeeper.remove(target)) {
+                removed++;
+                single = name;
+            }
+        }
+        if (removed == 0) {
+            source.sendFailure(Component.translatable("command.cobblemon_economy_plus.no_shopkeeper"));
+            return 0;
+        }
+        int count = removed;
+        Component name = single;
+        source.sendSuccess(() -> count == 1
+                ? Component.translatable("command.cobblemon_economy_plus.shopkeeper_removed", name)
+                : Component.translatable("command.cobblemon_economy_plus.shopkeepers_removed", count), true);
+        return removed;
     }
 
     private static int clearShopkeeper(CommandSourceStack source, Entity target) {

@@ -48,9 +48,11 @@ Cobblemon に経済の仕組みを加える、Minecraft 1.21.1 向けの Mod で
 | `/cep history <player> [件数]` | そのプレイヤーの直近の取引を表示(既定10件・最大50件、UTC) | `cobblemon_economy_plus.history`(OP2) |
 | `/cep shop reload` / `/cep shop list` | ショップ設定の再読込 / 一覧 | `cobblemon_economy_plus.shop`(OP2) |
 | `/cep shopkeeper set <npc> <shop_id>` / `clear <npc>` | NPC にショップを設定 / 解除 | `cobblemon_economy_plus.shopkeeper`(OP2) |
+| `/cep shopkeeper remove <npcs>` | 店員 NPC を削除(選択に含まれる店員以外は無視) | `cobblemon_economy_plus.shopkeeper.remove`(OP2) |
 
 - プレイヤー指定は**プレイヤー名(オフラインでも可)**です。`@a` などのセレクターはオンラインのプレイヤーに一致します。
-- ショップエディター(アイテム)の使用には `cobblemon_economy_plus.editor`(OP2)が必要です。
+- ショップエディター(アイテム)の使用には `cobblemon_economy_plus.editor`(OP2)が必要です。エディターでの店員削除(Shift + 左クリック 2 回)には
+  `cobblemon_economy_plus.shopkeeper.remove` が必要です。
 - 括弧内は、権限管理 Mod が何も設定していないときの既定です(OP レベル2 = コマンド使用可能な管理者)。
 
 ## 権限管理(LuckPerms など)
@@ -115,13 +117,17 @@ NPC ごとに上書きもできます。**ショップエディター**(クリ�
 
 ### 店員(ショップ店員NPC)
 
-- クリエイティブタブの**ショップ店員スポーンエッグ**で、`general` ショップに接続済みの村人が出ます(その場に留まり、通常のダメージでは失われません)。
+- クリエイティブタブの**ショップ店員スポーンエッグ**で、`general` ショップに接続済みの村人が出ます(その場に留まり、ダメージを受けません)。
 - 任意の生き物 NPC を店員にするには:
 
 ```mcfunction
 /cep shopkeeper set @e[type=minecraft:villager,limit=1,sort=nearest] trainer_boutique
 /cep shopkeeper clear @e[type=minecraft:villager,limit=1,sort=nearest]
 ```
+
+- 店員(コマンドで設定した NPC を含む)は攻撃・ダメージを受けません。例外は `/kill` と奈落だけです。
+- 店員を削除するには、ショップエディターで 5 秒以内に 2 回 Shift + 左クリックするか、
+  `/cep shopkeeper remove @e[tag=cep_shop:general]` などを実行します。`clear` はショップの紐付けだけを外し、NPC は残します。
 
 店員はスコアボードタグで紐付けられます。
 

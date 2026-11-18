@@ -20,6 +20,8 @@ public enum EconomyPermission {
     SHOP("shop", 2),
     /** {@code /cep shopkeeper set|clear}. */
     SHOPKEEPER("shopkeeper", 2),
+    /** {@code /cep shopkeeper remove} and Shift + left-click with the Shop Editor (deletes the NPC). */
+    SHOPKEEPER_REMOVE("shopkeeper.remove", 2),
     /** {@code /cep history}. */
     HISTORY("history", 2),
     /** Using the Shop Editor item on NPCs. */

@@ -8,6 +8,9 @@ import com.diamo.cobblemoneconomyplus.platform.ClientPayloadBridge;
 import com.diamo.cobblemoneconomyplus.platform.PlatformNetworking;
 import com.diamo.cobblemoneconomyplus.shop.ShopManager;
 import com.diamo.cobblemoneconomyplus.shop.ShopService;
+import com.diamo.cobblemoneconomyplus.shop.Shopkeeper;
+import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
+import net.neoforged.neoforge.event.entity.player.AttackEntityEvent;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.common.NeoForge;
@@ -37,6 +40,8 @@ public final class CobblemonEconomyPlusNeoForge {
         NeoForge.EVENT_BUS.addListener(this::onPlayerLogin);
         NeoForge.EVENT_BUS.addListener(this::onPlayerLogout);
         NeoForge.EVENT_BUS.addListener(this::onNpcInteraction);
+        NeoForge.EVENT_BUS.addListener(this::onAttackEntity);
+        NeoForge.EVENT_BUS.addListener(this::onIncomingDamage);
         NeoForge.EVENT_BUS.addListener(this::onServerStarted);
     }
 
@@ -77,6 +82,7 @@ public final class CobblemonEconomyPlusNeoForge {
     private void onPlayerLogout(PlayerEvent.PlayerLoggedOutEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             ShopService.onDisconnect(player.getUUID());
+            ShopEditorItem.onDisconnect(player.getUUID());
         }
     }
 
@@ -100,6 +106,23 @@ public final class CobblemonEconomyPlusNeoForge {
 
         if (ShopService.tryOpen(player, event.getTarget())) {
             event.setCancellationResult(InteractionResult.SUCCESS);
+            event.setCanceled(true);
+        }
+    }
+
+    private void onAttackEntity(AttackEntityEvent event) {
+        // Scoreboard tags are server-side only, so the attack is cancelled on the server.
+        if (event.getEntity().level().isClientSide() || !Shopkeeper.isShopkeeper(event.getTarget())) {
+            return;
+        }
+        if (event.getEntity() instanceof ServerPlayer player) {
+            ShopEditorItem.tryRemove(player, event.getTarget());
+        }
+        event.setCanceled(true);
+    }
+
+    private void onIncomingDamage(LivingIncomingDamageEvent event) {
+        if (Shopkeeper.blocksDamage(event.getEntity(), event.getSource())) {
             event.setCanceled(true);
         }
     }

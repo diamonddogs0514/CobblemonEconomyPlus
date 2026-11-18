@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- Remove shopkeeper NPCs with `/cep shopkeeper remove <npcs>` or by Shift + left-clicking one twice with the
+  Shop Editor. Both use the new permission node `cobblemon_economy_plus.shopkeeper.remove` (OP 2 by default,
+  grantable with LuckPerms). Only entities that are shopkeepers are removed.
+
+### Fixed
+- Shopkeepers can no longer be hit or damaged, including NPCs assigned with `/cep shopkeeper` or the Shop Editor
+  and attacks from creative-mode players. Only `/kill` and the void can still remove them.
+
 ## 1.0.0 - 2026-11-10
 
 First public version.
