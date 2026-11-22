@@ -205,7 +205,16 @@ public final class ShopDraft {
                 // Plain text that starts with a brace.
             }
         }
-        into.put(EN, raw);
+        // Plain text is shown to everyone; put it in the column of the language it is written in.
+        into.put(looksJapanese(raw) ? JA : EN, raw);
+    }
+
+    static boolean looksJapanese(String text) {
+        return text.codePoints().anyMatch(codePoint -> {
+            Character.UnicodeScript script = Character.UnicodeScript.of(codePoint);
+            return script == Character.UnicodeScript.HIRAGANA || script == Character.UnicodeScript.KATAKANA
+                    || script == Character.UnicodeScript.HAN;
+        });
     }
 
     /** A single language is written as plain text (shown to everyone), several as a per-language object. */

@@ -102,6 +102,18 @@ class AdminTest {
     }
 
     @Test
+    void plainJapaneseTextGoesInTheJapaneseColumn() {
+        ShopDefinition shop = ShopJson.readShops("""
+                { "shops": [ { "id": "x", "name": "よろず屋", "subtitle": "Open daily", "entries": [] } ] }
+                """).get(0);
+        ShopDraft draft = ShopDraft.of(shop);
+        assertEquals("よろず屋", draft.text(draft.name, ShopDraft.JA));
+        assertEquals("", draft.text(draft.name, ShopDraft.EN));
+        assertEquals("Open daily", draft.text(draft.subtitle, ShopDraft.EN));
+        assertEquals("よろず屋", draft.toJson().json().get("name").getAsString(), "still saved as plain text");
+    }
+
+    @Test
     void limitsAndStockAreEditedAsText() {
         ShopDraft draft = ShopDraft.of(shops().get(0));
         ShopDraft.EntryDraft apple = draft.entries.get(0);

@@ -193,10 +193,13 @@ Edit shops and sell values in game instead of editing the JSON files. Open it wi
 or Shift + right-click in the air. Requires `cobblemon_economy_plus.admin` (OP 2).
 
 - **Shops tab:** pick a shop on the left, or create one. Edit the id (new shops only), theme, buy-back multiplier,
-  English / Japanese name and subtitle, and the items: price, quantity, purchase limit (count + daily / weekly / once)
-  and stock (count + restock minutes). *Add held item* adds what you hold; ↑ ↓ reorder; *Save* applies the shop.
+  name and subtitle (English column on the left, Japanese on the right; a blank box shows in grey what those players
+  will see instead), and the items' price and quantity. *Add held item* adds what you hold; ↑ ↓ reorder; *Save*
+  applies the shop.
+- **Advanced:** shows each item's purchase limit (count + daily / weekly / once) and stock (count + restock minutes),
+  and the Restock / Reset limits tools. Items that already have a limit or stock show it in the list either way.
 - **Sell values tab:** search the item values, pick one (or the held item) and set or remove its value.
-- **Restock** and **Reset limits** (with a player name) run `/cep shop restock` and `/cep shop limits reset`.
+- **Restock** and **Reset limits** (with a player name; both under *Advanced*) run `/cep shop restock` and `/cep shop limits reset`.
 - Destructive buttons (delete, restock, reset, discard changes) need a second press within 3 seconds.
 
 How saving works:

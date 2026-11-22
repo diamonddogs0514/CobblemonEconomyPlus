@@ -11,6 +11,7 @@ import net.minecraft.Util;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -38,6 +39,18 @@ public final class AdminScreen extends Screen {
     private static final int SHOP_ROWS = 13;
     private static final int ENTRY_ROWS = 4;
     private static final int VALUE_ROWS = 8;
+    // Vertical layout of the Shops tab (offsets from the panel top).
+    private static final int LANG_Y = 37;
+    private static final int NAME_Y = 46;
+    private static final int SUBTITLE_Y = 62;
+    private static final int LIST_Y = 79;
+    private static final int EDIT_LABEL_Y = 153;
+    private static final int EDIT_Y = 162;
+    private static final int BUTTONS_Y = 179;
+    private static final int SAVE_Y = 196;
+    private static final int TEXT_X = 40;
+    private static final int TEXT_JA_X = 170;
+    private static final int TEXT_WIDTH = 124;
     private static final long CONFIRM_MILLIS = 3_000L;
     private static final int RED = 0xFFFF7A6E;
     private static final int GREEN = 0xFF8AF0A6;
@@ -65,6 +78,12 @@ public final class AdminScreen extends Screen {
     private String valueInput = "";
     private int valueScroll;
     private String resetPlayer = "";
+    /** Shows purchase limits, stock and the restock / reset tools; remembered while the game runs. */
+    private static boolean showAdvanced;
+    private EditBox nameEn;
+    private EditBox nameJa;
+    private EditBox subtitleEn;
+    private EditBox subtitleJa;
 
     private Component status = Component.empty();
     private boolean statusOk = true;
@@ -170,6 +189,9 @@ public final class AdminScreen extends Screen {
         }
 
         // Footer tools (they run the matching /cep commands, which check permissions on the server).
+        if (!showAdvanced) {
+            return;
+        }
         int fy = y + PANEL_HEIGHT - 18;
         addRenderableWidget(button(x + 206, fy, 54, "gui.cobblemon_economy_plus.admin.restock", () -> {
             if (confirm("restock")) {
@@ -188,59 +210,105 @@ public final class AdminScreen extends Screen {
     }
 
     private void initShops(int x, int y) {
-        addRenderableWidget(button(x + 6, y + 194, 90, "gui.cobblemon_economy_plus.admin.new_shop", this::newShop));
+        addRenderableWidget(button(x + 6, y + SAVE_Y, 90, "gui.cobblemon_economy_plus.admin.new_shop", this::newShop));
+        nameEn = nameJa = subtitleEn = subtitleJa = null;
         if (draft == null) {
             return;
         }
         int rx = x + 100;
 
-        EditBox idBox = textBox(rx + 14, y + 22, 76, draft.id, 32, value -> draft.id = value.toLowerCase(Locale.ROOT), null);
+        EditBox idBox = textBox(rx + 14, y + 22, 76, draft.id, 32, value -> {
+            draft.id = value.toLowerCase(Locale.ROOT);
+            refreshTextHints();
+        }, null);
         idBox.setEditable(draft.isNew);
         addRenderableWidget(idBox);
         addRenderableWidget(Button.builder(Component.translatable("theme.cobblemon_economy_plus." + draft.theme),
                 b -> {
                     draft.theme = ShopThemes.cycle(draft.theme, hasShiftDown() ? -1 : 1);
                     b.setMessage(Component.translatable("theme.cobblemon_economy_plus." + draft.theme));
+                    refreshTextHints();
                 }).bounds(rx + 132, y + 22, 76, 14).build());
         addRenderableWidget(textBox(rx + 254, y + 22, 40, draft.sellMultiplier, 8, value -> draft.sellMultiplier = value, null));
 
-        addRenderableWidget(textBox(rx + 40, y + 38, 120, draft.text(draft.name, ShopDraft.EN), 96,
-                value -> ShopDraft.setText(draft.name, ShopDraft.EN, value), "gui.cobblemon_economy_plus.admin.hint_en"));
-        addRenderableWidget(textBox(rx + 166, y + 38, 128, draft.text(draft.name, ShopDraft.JA), 96,
-                value -> ShopDraft.setText(draft.name, ShopDraft.JA, value), "gui.cobblemon_economy_plus.admin.hint_ja"));
-        addRenderableWidget(textBox(rx + 40, y + 54, 120, draft.text(draft.subtitle, ShopDraft.EN), 96,
-                value -> ShopDraft.setText(draft.subtitle, ShopDraft.EN, value), "gui.cobblemon_economy_plus.admin.hint_en"));
-        addRenderableWidget(textBox(rx + 166, y + 54, 128, draft.text(draft.subtitle, ShopDraft.JA), 96,
-                value -> ShopDraft.setText(draft.subtitle, ShopDraft.JA, value), "gui.cobblemon_economy_plus.admin.hint_ja"));
+        // Name and subtitle: English in the left column, Japanese in the right one (headed in renderShops).
+        nameEn = addRenderableWidget(languageBox(rx + TEXT_X, y + NAME_Y, draft.name, ShopDraft.EN));
+        nameJa = addRenderableWidget(languageBox(rx + TEXT_JA_X, y + NAME_Y, draft.name, ShopDraft.JA));
+        subtitleEn = addRenderableWidget(languageBox(rx + TEXT_X, y + SUBTITLE_Y, draft.subtitle, ShopDraft.EN));
+        subtitleJa = addRenderableWidget(languageBox(rx + TEXT_JA_X, y + SUBTITLE_Y, draft.subtitle, ShopDraft.JA));
+        refreshTextHints();
 
+        int ey = y + EDIT_Y;
         if (selectedEntry >= 0 && selectedEntry < draft.entries.size()) {
             ShopDraft.EntryDraft entry = draft.entries.get(selectedEntry);
-            int ey = y + 156;
-            addRenderableWidget(textBox(rx, ey, 58, entry.price, 19, value -> entry.price = value, null));
-            addRenderableWidget(textBox(rx + 62, ey, 26, entry.amount, 2, value -> entry.amount = value, null));
-            addRenderableWidget(textBox(rx + 92, ey, 36, entry.limitCount, 7, value -> entry.limitCount = value,
-                    "gui.cobblemon_economy_plus.admin.hint_none"));
-            addRenderableWidget(Button.builder(periodLabel(entry.period), b -> {
-                entry.period = ShopDefinition.Period.values()[(entry.period.ordinal() + 1) % ShopDefinition.Period.values().length];
-                b.setMessage(periodLabel(entry.period));
-            }).bounds(rx + 130, ey, 46, 14).build());
-            addRenderableWidget(textBox(rx + 180, ey, 36, entry.stockMax, 7, value -> entry.stockMax = value,
-                    "gui.cobblemon_economy_plus.admin.hint_none"));
-            addRenderableWidget(textBox(rx + 220, ey, 44, entry.restockMinutes, 6, value -> entry.restockMinutes = value,
-                    "gui.cobblemon_economy_plus.admin.hint_zero"));
+            if (showAdvanced) {
+                addRenderableWidget(textBox(rx, ey, 48, entry.price, 19, value -> entry.price = value, null));
+                addRenderableWidget(textBox(rx + 52, ey, 22, entry.amount, 2, value -> entry.amount = value, null));
+                addRenderableWidget(textBox(rx + 78, ey, 30, entry.limitCount, 7, value -> entry.limitCount = value,
+                        "gui.cobblemon_economy_plus.admin.hint_none"));
+                addRenderableWidget(Button.builder(periodLabel(entry.period), b -> {
+                    entry.period = ShopDefinition.Period.values()[(entry.period.ordinal() + 1) % ShopDefinition.Period.values().length];
+                    b.setMessage(periodLabel(entry.period));
+                }).bounds(rx + 111, ey, 42, 14).build());
+                addRenderableWidget(textBox(rx + 157, ey, 30, entry.stockMax, 7, value -> entry.stockMax = value,
+                        "gui.cobblemon_economy_plus.admin.hint_none"));
+                addRenderableWidget(textBox(rx + 191, ey, 34, entry.restockMinutes, 6, value -> entry.restockMinutes = value,
+                        "gui.cobblemon_economy_plus.admin.hint_zero"));
+            } else {
+                addRenderableWidget(textBox(rx, ey, 80, entry.price, 19, value -> entry.price = value, null));
+                addRenderableWidget(textBox(rx + 86, ey, 26, entry.amount, 2, value -> entry.amount = value, null));
+            }
         }
+        Button advanced = addRenderableWidget(Button.builder(advancedLabel(), b -> {
+            showAdvanced = !showAdvanced;
+            rebuildWidgets();
+        }).bounds(rx + 238, ey, 56, 14).build());
+        advanced.setTooltip(Tooltip.create(Component.translatable("gui.cobblemon_economy_plus.admin.advanced_tooltip")));
 
-        int by = y + 175;
+        int by = y + BUTTONS_Y;
         addRenderableWidget(button(rx, by, 92, "gui.cobblemon_economy_plus.admin.add_held", this::addHeldEntry));
         boolean hasEntry = selectedEntry >= 0;
         addRenderableWidget(button(rx + 96, by, 20, "gui.cobblemon_economy_plus.admin.up", () -> moveEntry(-1))).active = hasEntry;
         addRenderableWidget(button(rx + 118, by, 20, "gui.cobblemon_economy_plus.admin.down", () -> moveEntry(1))).active = hasEntry;
         addRenderableWidget(button(rx + 142, by, 70, "gui.cobblemon_economy_plus.admin.remove_entry", this::removeEntry)).active = hasEntry;
 
-        addRenderableWidget(button(rx, y + 194, 70, "gui.cobblemon_economy_plus.admin.save", this::save));
-        addRenderableWidget(button(rx + 74, y + 194, 70, "gui.cobblemon_economy_plus.admin.revert", this::revert));
-        addRenderableWidget(button(rx + 214, y + 194, 80, "gui.cobblemon_economy_plus.admin.delete_shop", this::deleteShop))
+        addRenderableWidget(button(rx, y + SAVE_Y, 70, "gui.cobblemon_economy_plus.admin.save", this::save));
+        addRenderableWidget(button(rx + 74, y + SAVE_Y, 70, "gui.cobblemon_economy_plus.admin.revert", this::revert));
+        addRenderableWidget(button(rx + 214, y + SAVE_Y, 80, "gui.cobblemon_economy_plus.admin.delete_shop", this::deleteShop))
                 .active = !draft.isNew;
+    }
+
+    private static Component advancedLabel() {
+        return Component.translatable("gui.cobblemon_economy_plus.admin.advanced").append(showAdvanced ? " ▾" : " ▸");
+    }
+
+    private EditBox languageBox(int x, int y, Map<String, String> field, String language) {
+        EditBox box = textBox(x, y, TEXT_WIDTH, draft.text(field, language), 96, value -> {
+            ShopDraft.setText(field, language, value);
+            refreshTextHints();
+        }, null);
+        box.setTooltip(Tooltip.create(Component.translatable("gui.cobblemon_economy_plus.admin.text_tooltip")));
+        return box;
+    }
+
+    /**
+     * A blank name or subtitle box shows, greyed out, what players of that language will see instead: the other
+     * language's text (one language is saved as plain text for everyone), or else the id / the theme's tagline.
+     */
+    private void refreshTextHints() {
+        if (draft == null || nameEn == null) {
+            return;
+        }
+        String tagline = Component.translatable("gui.cobblemon_economy_plus.boutique_subtitle." + draft.theme).getString();
+        fallbackHint(nameEn, draft.text(draft.name, ShopDraft.JA), draft.id);
+        fallbackHint(nameJa, draft.text(draft.name, ShopDraft.EN), draft.id);
+        fallbackHint(subtitleEn, draft.text(draft.subtitle, ShopDraft.JA), tagline);
+        fallbackHint(subtitleJa, draft.text(draft.subtitle, ShopDraft.EN), tagline);
+    }
+
+    private static void fallbackHint(EditBox box, String otherLanguage, String fallback) {
+        String shown = otherLanguage.isBlank() ? fallback : otherLanguage;
+        box.setHint(Component.translatable("gui.cobblemon_economy_plus.admin.fallback_hint", shown));
     }
 
     private void initValues(int x, int y) {
@@ -468,7 +536,7 @@ public final class AdminScreen extends Screen {
                 selectShop(shops.get(shopScroll + shopRow));
                 return true;
             }
-            int entryRow = rowAt(mouseX, mouseY, x + 100, y + 72, 294, ENTRY_ROW, ENTRY_ROWS);
+            int entryRow = rowAt(mouseX, mouseY, x + 100, y + LIST_Y, 294, ENTRY_ROW, ENTRY_ROWS);
             if (draft != null && entryRow >= 0 && entryScroll + entryRow < draft.entries.size()) {
                 selectedEntry = entryScroll + entryRow;
                 rebuildWidgets();
@@ -566,7 +634,8 @@ public final class AdminScreen extends Screen {
 
         // Status line.
         if (!status.getString().isEmpty() && Util.getMillis() - statusAt < 12_000L) {
-            g.drawString(font, abbreviate(status.getString(), 196), x + 8, y + PANEL_HEIGHT - 14,
+            // The footer tools take the right half while the advanced settings are shown.
+            g.drawString(font, abbreviate(status.getString(), showAdvanced ? 196 : PANEL_WIDTH - 16), x + 8, y + PANEL_HEIGHT - 14,
                     statusOk ? GREEN : RED, false);
         }
         super.render(g, mouseX, mouseY, partialTick);
@@ -596,11 +665,16 @@ public final class AdminScreen extends Screen {
         g.drawString(font, "ID", rx, y + 25, c.ink, false);
         g.drawString(font, Component.translatable("gui.cobblemon_economy_plus.admin.theme"), rx + 96, y + 25, c.ink, false);
         g.drawString(font, Component.translatable("gui.cobblemon_economy_plus.admin.multiplier"), rx + 212, y + 25, c.ink, false);
-        g.drawString(font, Component.translatable("gui.cobblemon_economy_plus.admin.name"), rx, y + 41, c.ink, false);
-        g.drawString(font, Component.translatable("gui.cobblemon_economy_plus.admin.subtitle"), rx, y + 57, c.ink, false);
+        // Column headers for the per-language name and subtitle.
+        g.drawString(font, Component.translatable("gui.cobblemon_economy_plus.admin.lang_en"), rx + TEXT_X + 1, y + LANG_Y,
+                c.inkMuted, false);
+        g.drawString(font, Component.translatable("gui.cobblemon_economy_plus.admin.lang_ja"), rx + TEXT_JA_X + 1, y + LANG_Y,
+                c.inkMuted, false);
+        g.drawString(font, Component.translatable("gui.cobblemon_economy_plus.admin.name"), rx, y + NAME_Y + 3, c.ink, false);
+        g.drawString(font, Component.translatable("gui.cobblemon_economy_plus.admin.subtitle"), rx, y + SUBTITLE_Y + 3, c.ink, false);
 
         // Entries.
-        int ly = y + 72;
+        int ly = y + LIST_Y;
         g.fill(rx, ly, rx + 294, ly + ENTRY_ROW * ENTRY_ROWS, c.bodyDark);
         if (draft.entries.isEmpty()) {
             g.drawString(font, Component.translatable("gui.cobblemon_economy_plus.admin.no_entries"), rx + 6, ly + 6,
@@ -625,21 +699,25 @@ public final class AdminScreen extends Screen {
         if (draft.entries.size() > ENTRY_ROWS) {
             String more = (entryScroll + 1) + "-" + Math.min(draft.entries.size(), entryScroll + ENTRY_ROWS)
                     + " / " + draft.entries.size();
-            g.drawString(font, more, rx + 294 - font.width(more), ly + ENTRY_ROW * ENTRY_ROWS + 1, c.inkMuted, false);
+            g.drawString(font, more, rx + 294 - font.width(more), y + BUTTONS_Y + 3, c.inkMuted, false);
         }
 
         if (selectedEntry >= 0 && selectedEntry < draft.entries.size()) {
-            int labelY = y + 147;
+            int labelY = y + EDIT_LABEL_Y;
             g.drawString(font, Component.translatable("gui.cobblemon_economy_plus.admin.price"), rx, labelY, c.ink, false);
-            g.drawString(font, Component.translatable("gui.cobblemon_economy_plus.admin.amount"), rx + 62, labelY, c.ink, false);
-            g.drawString(font, Component.translatable("gui.cobblemon_economy_plus.admin.limit"), rx + 92, labelY, c.ink, false);
-            g.drawString(font, Component.translatable("gui.cobblemon_economy_plus.admin.stock"), rx + 180, labelY, c.ink, false);
-            g.drawString(font, Component.translatable("gui.cobblemon_economy_plus.admin.restock_minutes"), rx + 220, labelY,
-                    c.ink, false);
+            if (showAdvanced) {
+                g.drawString(font, Component.translatable("gui.cobblemon_economy_plus.admin.amount"), rx + 52, labelY, c.ink, false);
+                g.drawString(font, Component.translatable("gui.cobblemon_economy_plus.admin.limit"), rx + 78, labelY, c.ink, false);
+                g.drawString(font, Component.translatable("gui.cobblemon_economy_plus.admin.stock"), rx + 157, labelY, c.ink, false);
+                g.drawString(font, Component.translatable("gui.cobblemon_economy_plus.admin.restock_minutes"), rx + 191, labelY,
+                        c.ink, false);
+            } else {
+                g.drawString(font, Component.translatable("gui.cobblemon_economy_plus.admin.amount"), rx + 86, labelY, c.ink, false);
+            }
         }
         if (dirty()) {
             Component unsaved = Component.translatable("gui.cobblemon_economy_plus.admin.unsaved_mark");
-            g.drawString(font, unsaved, rx + 150, y + 197, 0xFFFFD166, false);
+            g.drawString(font, unsaved, rx + 150, y + SAVE_Y + 3, 0xFFFFD166, false);
         }
     }
 
