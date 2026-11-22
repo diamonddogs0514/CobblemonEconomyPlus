@@ -29,6 +29,7 @@ public final class CobblemonEconomyPlusFabric implements ModInitializer {
         PlatformNetworking.setServerSender(ServerPlayNetworking::send);
         PayloadTypeRegistry.playS2C().register(EconomyPayloads.BalancePayload.TYPE, EconomyPayloads.BalancePayload.STREAM_CODEC);
         PayloadTypeRegistry.playS2C().register(EconomyPayloads.OpenShopPayload.TYPE, EconomyPayloads.OpenShopPayload.STREAM_CODEC);
+        PayloadTypeRegistry.playS2C().register(EconomyPayloads.ShopEntryUpdatePayload.TYPE, EconomyPayloads.ShopEntryUpdatePayload.STREAM_CODEC);
         PayloadTypeRegistry.playC2S().register(EconomyPayloads.ShopActionPayload.TYPE, EconomyPayloads.ShopActionPayload.STREAM_CODEC);
 
         PayloadTypeRegistry.playC2S().register(EconomyPayloads.SellActionPayload.TYPE, EconomyPayloads.SellActionPayload.STREAM_CODEC);

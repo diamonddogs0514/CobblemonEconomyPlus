@@ -1,5 +1,6 @@
 package com.diamo.cobblemoneconomyplus;
 
+import com.diamo.cobblemoneconomyplus.config.ModConfig;
 import com.diamo.cobblemoneconomyplus.economy.EconomyService;
 import com.diamo.cobblemoneconomyplus.reward.RewardManager;
 import com.diamo.cobblemoneconomyplus.reward.RewardService;
@@ -25,6 +26,7 @@ public final class CobblemonEconomyPlus {
     /** Called by each loader once the server has started. */
     public static void onServerStarted(MinecraftServer server) {
         ShopManager.reload(server);
+        ModConfig.reload(server);
         RewardManager.reload(server);
         RewardService.onServerStarted(server);
     }

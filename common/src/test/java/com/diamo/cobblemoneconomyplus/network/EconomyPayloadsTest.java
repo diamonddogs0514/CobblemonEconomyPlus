@@ -51,6 +51,26 @@ class EconomyPayloadsTest {
     }
 
     @Test
+    void purchaseLimitsTravelWithEachEntry() {
+        EconomyPayloads.ShopEntryPayload limited =
+                new EconomyPayloads.ShopEntryPayload("cobblemon:master_ball", 1, 50_000L, 1, 0, 1, 2, 3_600);
+        EconomyPayloads.OpenShopPayload payload = new EconomyPayloads.OpenShopPayload(
+                "rare", "Rare", "masterball", "", 10L, List.of(limited), List.of());
+        EconomyPayloads.ShopEntryPayload decoded =
+                roundTrip(EconomyPayloads.OpenShopPayload.STREAM_CODEC, payload).entries().get(0);
+        assertEquals(limited, decoded);
+        assertEquals(0, decoded.allowed());
+        assertEquals(Integer.MAX_VALUE, new EconomyPayloads.ShopEntryPayload("minecraft:apple", 1, 5L).allowed());
+    }
+
+    @Test
+    void entryUpdatesRoundTrip() {
+        EconomyPayloads.ShopEntryUpdatePayload payload =
+                new EconomyPayloads.ShopEntryUpdatePayload("rare", 3, -1, 0, 86_400);
+        assertEquals(payload, roundTrip(EconomyPayloads.ShopEntryUpdatePayload.STREAM_CODEC, payload));
+    }
+
+    @Test
     void openShopWithNoEntriesRoundTrips() {
         EconomyPayloads.OpenShopPayload payload = new EconomyPayloads.OpenShopPayload(
                 "empty", "Empty", "pokeball", "", 0L, List.of(), List.of());

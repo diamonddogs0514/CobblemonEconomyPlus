@@ -126,5 +126,19 @@
   "command.cobblemon_economy_plus.top_not_ranked": "まだランキングに載っていません(所持金 0 のプレイヤーは載りません)。",
   "command.cobblemon_economy_plus.top_next_page": "次のページ: %s",
   "command.cobblemon_economy_plus.top_empty": "まだ誰もコインを持っていません。",
-  "command.cobblemon_economy_plus.top_no_page": "そのページはありません。ページは 1〜%s です。"
+  "command.cobblemon_economy_plus.top_no_page": "そのページはありません。ページは 1〜%s です。",
+  "gui.cobblemon_economy_plus.boutique_sold_out": "売り切れ",
+  "gui.cobblemon_economy_plus.boutique_limit_reached": "購入上限に達しました",
+  "gui.cobblemon_economy_plus.limit_daily": "今日あと %s/%s",
+  "gui.cobblemon_economy_plus.limit_weekly": "今週あと %s/%s",
+  "gui.cobblemon_economy_plus.limit_never": "あと %s/%s",
+  "gui.cobblemon_economy_plus.stock_left": "在庫 %s",
+  "gui.cobblemon_economy_plus.stock_sold_out": "売り切れ",
+  "gui.cobblemon_economy_plus.stock_restock": "(入荷まで %s)",
+  "message.cobblemon_economy_plus.purchase_only_left": "あと %s 個までしか買えません。",
+  "message.cobblemon_economy_plus.purchase_sold_out": "売り切れです。",
+  "message.cobblemon_economy_plus.purchase_limit_reached": "購入できる上限に達しています。",
+  "command.cobblemon_economy_plus.shop_restocked": "在庫を補充しました(%s 件)。",
+  "command.cobblemon_economy_plus.limits_reset": "%s の購入回数をリセットしました。",
+  "command.cobblemon_economy_plus.limits_reset_none": "%s の購入記録はありません。"
 }

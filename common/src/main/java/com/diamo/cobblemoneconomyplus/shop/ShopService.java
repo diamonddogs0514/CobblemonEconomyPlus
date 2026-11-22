@@ -60,11 +60,7 @@ public final class ShopService {
 
     private static void sendShop(ServerPlayer player, ShopDefinition shop, Entity shopkeeper) {
         List<EconomyPayloads.ShopEntryPayload> entries = shop.entries().stream()
-                .map(entry -> new EconomyPayloads.ShopEntryPayload(
-                        entry.itemId().toString(),
-                        entry.amount(),
-                        entry.price()
-                ))
+                .map(entry -> entryPayload(player, shop, entry))
                 .toList();
         List<EconomyPayloads.ShopEntryPayload> sellEntries = ShopManager.sellOffers(shop).stream()
                 .map(offer -> new EconomyPayloads.ShopEntryPayload(offer.itemId().toString(), 1, offer.unitPrice()))
@@ -78,6 +74,38 @@ public final class ShopService {
                 entries,
                 sellEntries
         ));
+    }
+
+    private static EconomyPayloads.ShopEntryPayload entryPayload(ServerPlayer player, ShopDefinition shop,
+                                                                 ShopDefinition.Entry entry) {
+        PurchaseLimits.Availability availability =
+                PurchaseLimits.check(player.server, player.getUUID(), shop.id(), entry);
+        return new EconomyPayloads.ShopEntryPayload(
+                entry.itemId().toString(),
+                entry.amount(),
+                entry.price(),
+                availability.limitMax(),
+                availability.limitLeft(),
+                availability.period().ordinal(),
+                availability.stockLeft(),
+                restockSeconds(availability)
+        );
+    }
+
+    private static int restockSeconds(PurchaseLimits.Availability availability) {
+        if (availability.restockAt() < 0L) {
+            return -1;
+        }
+        long seconds = Math.max(0L, (availability.restockAt() - System.currentTimeMillis() + 999L) / 1000L);
+        return (int) Math.min(Integer.MAX_VALUE, seconds);
+    }
+
+    /** Tells the open screen the new remaining counts of one limited entry. */
+    private static void sendEntryUpdate(ServerPlayer player, ShopDefinition shop, int index) {
+        PurchaseLimits.Availability availability =
+                PurchaseLimits.check(player.server, player.getUUID(), shop.id(), shop.entries().get(index));
+        PlatformNetworking.sendToPlayer(player, new EconomyPayloads.ShopEntryUpdatePayload(
+                shop.id(), index, availability.limitLeft(), availability.stockLeft(), restockSeconds(availability)));
     }
 
     /**
@@ -149,6 +177,19 @@ public final class ShopService {
             return;
         }
 
+        // Purchase limits and stock (checked here, whatever the screen showed).
+        PurchaseLimits.Availability availability =
+                PurchaseLimits.check(player.server, player.getUUID(), shop.id(), entry);
+        if (action.quantity() > availability.allowed()) {
+            int allowed = availability.allowed();
+            String key = allowed > 0 ? "message.cobblemon_economy_plus.purchase_only_left"
+                    : availability.stockLeft() == 0 ? "message.cobblemon_economy_plus.purchase_sold_out"
+                    : "message.cobblemon_economy_plus.purchase_limit_reached";
+            player.displayClientMessage(Component.translatable(key, allowed), true);
+            sendEntryUpdate(player, shop, action.entryIndex());
+            return;
+        }
+
         ItemStack purchased = new ItemStack(BuiltInRegistries.ITEM.get(entry.itemId()), totalItems);
         if (purchased.isEmpty() || !canFit(player.getInventory(), purchased)) {
             player.displayClientMessage(Component.translatable("message.cobblemon_economy_plus.inventory_full"), true);
@@ -162,6 +203,10 @@ public final class ShopService {
             return;
         }
 
+        if (entry.limited()) {
+            PurchaseLimits.record(player.server, player.getUUID(), shop.id(), entry, action.quantity());
+            sendEntryUpdate(player, shop, action.entryIndex());
+        }
         Component purchasedName = purchased.getHoverName();
         // Never lose paid-for items: whatever the inventory cannot take is dropped at the player's feet.
         player.getInventory().add(purchased);

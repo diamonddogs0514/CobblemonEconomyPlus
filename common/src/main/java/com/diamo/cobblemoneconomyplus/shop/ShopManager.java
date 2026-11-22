@@ -613,11 +613,53 @@ public final class ShopManager {
             if (price < 0) {
                 throw new IllegalArgumentException("price must be zero or positive");
             }
-            return Optional.of(new ShopDefinition.Entry(itemId, amount, price));
+            // A broken limit skips the whole entry: selling it without the limit could give away rare items.
+            return Optional.of(new ShopDefinition.Entry(itemId, amount, price, parseLimit(object), parseStock(object)));
         } catch (RuntimeException exception) {
             warnings.add("shop '" + shopId + "': skipped entry #" + index + ": " + describe(exception));
             return Optional.empty();
         }
+    }
+
+    static final int MAX_LIMIT = 1_000_000;
+    /** One year. */
+    static final int MAX_RESTOCK_MINUTES = 525_600;
+
+    private static ShopDefinition.Limit parseLimit(JsonObject entry) {
+        if (!entry.has("limit")) {
+            return null;
+        }
+        if (!entry.get("limit").isJsonObject()) {
+            throw new IllegalArgumentException("'limit' must be an object like { \"per_player\": 1, \"period\": \"weekly\" }");
+        }
+        JsonObject limit = entry.getAsJsonObject("limit");
+        int perPlayer = integer(limit, "per_player");
+        if (perPlayer < 1 || perPlayer > MAX_LIMIT) {
+            throw new IllegalArgumentException("limit.per_player must be between 1 and " + MAX_LIMIT);
+        }
+        String periodId = limit.has("period") ? string(limit, "period") : ShopDefinition.Period.NEVER.id();
+        ShopDefinition.Period period = ShopDefinition.Period.byId(periodId).orElseThrow(() ->
+                new IllegalArgumentException("limit.period must be daily, weekly or never (was '" + periodId + "')"));
+        return new ShopDefinition.Limit(perPlayer, period);
+    }
+
+    private static ShopDefinition.Stock parseStock(JsonObject entry) {
+        if (!entry.has("stock")) {
+            return null;
+        }
+        if (!entry.get("stock").isJsonObject()) {
+            throw new IllegalArgumentException("'stock' must be an object like { \"max\": 3, \"restock_minutes\": 1440 }");
+        }
+        JsonObject stock = entry.getAsJsonObject("stock");
+        int max = integer(stock, "max");
+        if (max < 1 || max > MAX_LIMIT) {
+            throw new IllegalArgumentException("stock.max must be between 1 and " + MAX_LIMIT);
+        }
+        int restock = stock.has("restock_minutes") ? integer(stock, "restock_minutes") : 0;
+        if (restock < 0 || restock > MAX_RESTOCK_MINUTES) {
+            throw new IllegalArgumentException("stock.restock_minutes must be between 0 and " + MAX_RESTOCK_MINUTES);
+        }
+        return new ShopDefinition.Stock(max, restock);
     }
 
     private static String string(JsonObject object, String key) {

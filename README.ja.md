@@ -48,8 +48,9 @@ Cobblemon に経済の仕組みを加える、Minecraft 1.21.1 向けの Mod で
 | `/cep money add <players> <amount>` | 所持金を増やす | 同上 |
 | `/cep money take <players> <amount>` | 所持金を減らす(不足なら変更しない) | 同上 |
 | `/cep history <player> [件数]` | そのプレイヤーの直近の取引を表示(既定10件・最大50件、UTC) | `cobblemon_economy_plus.history`(OP2) |
-| `/cep shop reload` / `/cep shop list` | 設定ファイル(ショップ・売却価格・報酬)の再読込 / ショップの一覧。エラーのあるファイルは前の設定のまま | `cobblemon_economy_plus.shop`(OP2) |
-| `/cep shop validate` | shops.json・item_values.json・rewards.json を反映せずに検査(行番号つきのエラー、飛ばした項目、売り買いで儲かる設定) | 同上 |
+| `/cep shop reload` / `/cep shop list` | 設定ファイル(ショップ・売却価格・報酬・全体設定)の再読込 / ショップの一覧。エラーのあるファイルは前の設定のまま | `cobblemon_economy_plus.shop`(OP2) |
+| `/cep shop validate` | shops.json・item_values.json・rewards.json・config.json を反映せずに検査(行番号つきのエラー、飛ばした項目、売り買いで儲かる設定) | 同上 |
+| `/cep shop restock` / `/cep shop limits reset <player>` | 全部の在庫を補充 / そのプレイヤーの購入数をリセット | 同上 |
 | `/cep shopkeeper set <npc> <shop_id>` / `clear <npc>` | NPC にショップを設定 / 解除 | `cobblemon_economy_plus.shopkeeper`(OP2) |
 | `/cep shopkeeper remove <npcs>` | 店員 NPC を削除(選択に含まれる店員以外は無視) | `cobblemon_economy_plus.shopkeeper.remove`(OP2) |
 
@@ -99,6 +100,30 @@ Cobblemon に経済の仕組みを加える、Minecraft 1.21.1 向けの Mod で
 | `theme` | 画面のデザイン(下記)。省略時は `pokeball` |
 | `sell_multiplier` | 買取価格の倍率(0〜100、既定 1.0)。**0 でそのショップは買取しません** |
 | `entries` | 売る商品。`item`(アイテムID)、`amount`(1セットの個数、1〜64)、`price`(1セットの価格) |
+
+**購入制限と在庫**(商品ごとに任意。1.1.0 以降)
+
+```json
+{ "item": "cobblemon:master_ball", "amount": 1, "price": 50000,
+  "limit": { "per_player": 1, "period": "weekly" },
+  "stock": { "max": 3, "restock_minutes": 1440 } }
+```
+
+- `limit`: 1 人が `period` ごとに買える数(`per_player`)。`period` は `daily`(毎日)、`weekly`(毎週、月曜始まり)、
+  `never`(ずっと 1 回きり。省略時)。日付はサーバーの時刻で 0 時に変わります。
+- `stock`: 全員で共有する在庫 `max`。最後の補充のあと最初に売れてから `restock_minutes` 分たつと満タンに戻ります(0 = 補充しない)。
+  両方書けば両方かかります。
+- 数はセット単位(ショップで選ぶ数量)です。ショップ画面に残りが表示されます(「今週あと 1/2」「在庫 3」「売り切れ (入荷まで 2h05m)」)。
+  購入のたびにサーバー側で確認します。
+- `limit` や `stock` の書き方が間違っている商品は、制限なしで売らないように**飛ばします**(再読込・検査で表示されます)。
+- `config.json` の `"purchase_limits_enabled": false` で全部の制限を止められます(買った数は残り、戻すとまた効きます)。
+  `/cep shop restock` で全部の在庫を補充、`/cep shop limits reset <player>` でそのプレイヤーの購入数をリセットします。
+
+**`config.json`** — 全体の設定
+
+```json
+{ "purchase_limits_enabled": true }
+```
 
 **`item_values.json`** — 売却できるアイテムの「基準額」
 
@@ -193,6 +218,7 @@ NPC ごとに上書きもできます。**ショップエディター**(クリ�
 
 残高はワールドのデータ(`data/cobblemon_economy_plus_balances.dat`)に UUID 単位で保存されます。
 報酬の記録(受け取り済みの図鑑の節目、その日の報酬の合計)は `data/cobblemon_economy_plus_rewards.dat` に保存されます。
+購入数と在庫は `data/cobblemon_economy_plus_purchases.dat` に保存されます。
 データ形式に版番号を持たせてあり、将来の更新で既存のワールドを移行できるようにしています。
 **更新前にワールドのバックアップを取ってください。**
 

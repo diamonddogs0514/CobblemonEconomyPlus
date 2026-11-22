@@ -16,7 +16,7 @@ public final class EconomyPayloads {
      * with a clear message). <b>Bump this whenever any payload's wire format changes.</b> Fabric has no
      * built-in version check, so keep client and server on the same mod version there.
      */
-    public static final String PROTOCOL_VERSION = "1.0";
+    public static final String PROTOCOL_VERSION = "1.1";
 
     private static final int MAX_SHOP_ID_LENGTH = 32;
     private static final int MAX_NAME_LENGTH = 512;
@@ -132,8 +132,76 @@ public final class EconomyPayloads {
         }
     }
 
-    /** Wire format for one item bundle in a shop. */
-    public record ShopEntryPayload(String itemId, int amount, long price) {
+    /**
+     * Wire format for one item bundle in a shop. The other fields describe purchase limits (1.1+): {@code limitMax} /
+     * {@code limitLeft} bundles per player in {@code period} (a {@code ShopDefinition.Period} ordinal), {@code stockLeft}
+     * shared by everyone, and {@code restockSeconds} until a partly sold stock fills up again. Each is -1 when it does
+     * not apply.
+     */
+    public record ShopEntryPayload(String itemId, int amount, long price, int limitMax, int limitLeft, int period,
+                                   int stockLeft, int restockSeconds) {
+        /** An entry without limits (and every sell offer). */
+        public ShopEntryPayload(String itemId, int amount, long price) {
+            this(itemId, amount, price, -1, -1, 0, -1, -1);
+        }
+
+        public boolean hasLimit() {
+            return limitMax >= 0;
+        }
+
+        public boolean hasStock() {
+            return stockLeft >= 0;
+        }
+
+        /** Bundles that can still be bought (Integer.MAX_VALUE without limits). */
+        public int allowed() {
+            int allowed = Integer.MAX_VALUE;
+            if (hasLimit()) {
+                allowed = Math.min(allowed, Math.max(0, limitLeft));
+            }
+            if (hasStock()) {
+                allowed = Math.min(allowed, stockLeft);
+            }
+            return allowed;
+        }
+
+        /** The same entry with new remaining counts (after a purchase). */
+        public ShopEntryPayload withRemaining(int newLimitLeft, int newStockLeft, int newRestockSeconds) {
+            return new ShopEntryPayload(itemId, amount, price, limitMax, newLimitLeft, period, newStockLeft,
+                    newRestockSeconds);
+        }
+    }
+
+    /**
+     * Sent after a purchase of a limited entry (or one refused by its limit): the new remaining counts for entry
+     * {@code entryIndex} of the open shop, so the screen updates without being rebuilt.
+     */
+    public record ShopEntryUpdatePayload(String shopId, int entryIndex, int limitLeft, int stockLeft, int restockSeconds)
+            implements CustomPacketPayload {
+        public static final Type<ShopEntryUpdatePayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(
+                CobblemonEconomyPlus.MOD_ID, "shop_entry_update"
+        ));
+        public static final StreamCodec<RegistryFriendlyByteBuf, ShopEntryUpdatePayload> STREAM_CODEC = StreamCodec.of(
+                (buffer, payload) -> {
+                    buffer.writeUtf(payload.shopId, MAX_SHOP_ID_LENGTH);
+                    buffer.writeVarInt(payload.entryIndex);
+                    buffer.writeVarInt(payload.limitLeft);
+                    buffer.writeVarInt(payload.stockLeft);
+                    buffer.writeVarInt(payload.restockSeconds);
+                },
+                buffer -> new ShopEntryUpdatePayload(
+                        buffer.readUtf(MAX_SHOP_ID_LENGTH),
+                        buffer.readVarInt(),
+                        buffer.readVarInt(),
+                        buffer.readVarInt(),
+                        buffer.readVarInt()
+                )
+        );
+
+        @Override
+        public Type<ShopEntryUpdatePayload> type() {
+            return TYPE;
+        }
     }
 
     private static void writeOpenShop(RegistryFriendlyByteBuf buffer, OpenShopPayload payload) {
@@ -163,6 +231,11 @@ public final class EconomyPayloads {
             buffer.writeUtf(entry.itemId, MAX_ITEM_ID_LENGTH);
             buffer.writeVarInt(entry.amount);
             buffer.writeVarLong(entry.price);
+            buffer.writeVarInt(entry.limitMax);
+            buffer.writeVarInt(entry.limitLeft);
+            buffer.writeVarInt(entry.period);
+            buffer.writeVarInt(entry.stockLeft);
+            buffer.writeVarInt(entry.restockSeconds);
         }
     }
 
@@ -176,7 +249,12 @@ public final class EconomyPayloads {
             entries.add(new ShopEntryPayload(
                     buffer.readUtf(MAX_ITEM_ID_LENGTH),
                     buffer.readVarInt(),
-                    Math.max(0L, buffer.readVarLong())
+                    Math.max(0L, buffer.readVarLong()),
+                    buffer.readVarInt(),
+                    buffer.readVarInt(),
+                    buffer.readVarInt(),
+                    buffer.readVarInt(),
+                    buffer.readVarInt()
             ));
         }
         return entries;

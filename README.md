@@ -49,8 +49,9 @@ mainly for multiplayer servers.
 | `/cep money add <players> <amount>` | Add coins | same |
 | `/cep money take <players> <amount>` | Remove coins (unchanged if the player cannot afford it) | same |
 | `/cep history <player> [count]` | Show the player's latest transactions (default 10, max 50, UTC) | `cobblemon_economy_plus.history` (OP 2) |
-| `/cep shop reload` / `/cep shop list` | Reload the config files (shops, item values, rewards) / list shops. A file with errors keeps its previous settings | `cobblemon_economy_plus.shop` (OP 2) |
-| `/cep shop validate` | Check shops.json, item_values.json and rewards.json without applying them (errors with line numbers, skipped entries, buy/sell loops) | same |
+| `/cep shop reload` / `/cep shop list` | Reload the config files (shops, item values, rewards, settings) / list shops. A file with errors keeps its previous settings | `cobblemon_economy_plus.shop` (OP 2) |
+| `/cep shop validate` | Check shops.json, item_values.json, rewards.json and config.json without applying them (errors with line numbers, skipped entries, buy/sell loops) | same |
+| `/cep shop restock` / `/cep shop limits reset <player>` | Refill every stock / clear a player's purchase counts | same |
 | `/cep shopkeeper set <npc> <shop_id>` / `clear <npc>` | Link / unlink an NPC to a shop | `cobblemon_economy_plus.shopkeeper` (OP 2) |
 | `/cep shopkeeper remove <npcs>` | Delete shopkeeper NPCs (other entities in the selection are skipped) | `cobblemon_economy_plus.shopkeeper.remove` (OP 2) |
 
@@ -100,6 +101,30 @@ Created in `config/cobblemon_economy_plus/` on first start. Apply edits with `/c
 | `theme` | Screen look (see below). Defaults to `pokeball` |
 | `sell_multiplier` | Multiplier for buy-back prices (0–100, default 1.0). **0 means the shop does not buy items** |
 | `entries` | What the shop sells: `item` (item id), `amount` (items per bundle, 1–64), `price` (price per bundle) |
+
+**Purchase limits and stock** (optional, per entry, 1.1.0+)
+
+```json
+{ "item": "cobblemon:master_ball", "amount": 1, "price": 50000,
+  "limit": { "per_player": 1, "period": "weekly" },
+  "stock": { "max": 3, "restock_minutes": 1440 } }
+```
+
+- `limit`: each player can buy at most `per_player` bundles per `period`: `daily`, `weekly` (weeks start on Monday) or
+  `never` (once ever, the default). Days start at midnight server time.
+- `stock`: `max` bundles shared by all players. `restock_minutes` after the first sale since the last restock, the stock
+  is full again (0 = never restocks). With both, both apply.
+- Counts are in bundles (the quantity picked in the shop). The shop screen shows what is left ("This week 1/2 left",
+  "Stock 3", "Sold out (restock in 2h05m)"); the server checks every purchase.
+- An entry whose `limit` or `stock` is invalid is skipped (rather than sold without it) and reported by reload / validate.
+- Switch all limits off with `"purchase_limits_enabled": false` in `config.json` (counts are kept and apply again when
+  switched back on). `/cep shop restock` refills every stock; `/cep shop limits reset <player>` clears a player's counts.
+
+**`config.json`** — general settings
+
+```json
+{ "purchase_limits_enabled": true }
+```
 
 **`item_values.json`** — base values of sellable items
 
@@ -196,6 +221,7 @@ The player-name column is only filled when that player was online at the time; i
 
 Balances are stored per UUID in the world data (`data/cobblemon_economy_plus_balances.dat`).
 Reward bookkeeping (Pokédex milestones already paid, today's reward total) is in `data/cobblemon_economy_plus_rewards.dat`.
+Purchase counts and stock are in `data/cobblemon_economy_plus_purchases.dat`.
 The format carries a version number so future updates can migrate existing worlds.
 **Back up your world before updating.**
 

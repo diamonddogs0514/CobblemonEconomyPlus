@@ -18,10 +18,18 @@
   `data/cobblemon_economy_plus_rewards.dat`.
 - `/cep top [page]`: balance ranking (10 players per page, ties share a rank, offline players shown by name) with the
   viewer's own rank. Permission node `cobblemon_economy_plus.top` (everyone by default).
+- Purchase limits in `shops.json`: per entry, `limit` (bundles per player per `daily` / `weekly` / `never` period) and
+  `stock` (shared stock that refills `restock_minutes` after the first sale). The shop screen shows what is left and
+  when a sold-out stock returns; every purchase is checked on the server. Counts are saved in
+  `data/cobblemon_economy_plus_purchases.dat`.
+- `config/cobblemon_economy_plus/config.json` with `purchase_limits_enabled` to switch all limits off.
+- `/cep shop restock` (refill every stock) and `/cep shop limits reset <player>` (clear a player's purchase counts).
 
 ### Changed
 - `/cep shop reload` reports problems in chat (up to 5, the rest in the server log) and how many item values were loaded.
-- `/cep shop reload` and `/cep shop validate` also cover `rewards.json`.
+- `/cep shop reload` and `/cep shop validate` also cover `rewards.json` and `config.json`.
+- Network protocol version is now `1.1` (shop entries carry purchase limits). **Update the mod on the server and all
+  clients together.**
 
 ### Fixed
 - A syntax error in `shops.json` (such as a missing comma or a cut-off file) no longer fails with an unexplained error.

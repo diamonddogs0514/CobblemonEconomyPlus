@@ -53,6 +53,9 @@ public final class CobblemonEconomyPlusNeoForge {
         registrar.playToClient(EconomyPayloads.OpenShopPayload.TYPE, EconomyPayloads.OpenShopPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() -> ClientPayloadBridge.handleOpenShop(payload))
         );
+        registrar.playToClient(EconomyPayloads.ShopEntryUpdatePayload.TYPE, EconomyPayloads.ShopEntryUpdatePayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> ClientPayloadBridge.handleEntryUpdate(payload))
+        );
         registrar.playToServer(EconomyPayloads.SellActionPayload.TYPE, EconomyPayloads.SellActionPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() -> {
                     if (context.player() instanceof ServerPlayer player) {

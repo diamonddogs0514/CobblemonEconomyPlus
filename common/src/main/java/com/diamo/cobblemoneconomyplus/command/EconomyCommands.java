@@ -1,6 +1,8 @@
 package com.diamo.cobblemoneconomyplus.command;
 
 import com.diamo.cobblemoneconomyplus.api.CobblemonEconomyApi;
+import com.diamo.cobblemoneconomyplus.config.ConfigResult;
+import com.diamo.cobblemoneconomyplus.config.ModConfig;
 import com.diamo.cobblemoneconomyplus.economy.BalanceRanking;
 import com.diamo.cobblemoneconomyplus.economy.EconomyFormat;
 import com.diamo.cobblemoneconomyplus.economy.EconomySavedData;
@@ -9,6 +11,7 @@ import com.diamo.cobblemoneconomyplus.economy.TransactionLog;
 import com.diamo.cobblemoneconomyplus.permission.EconomyPermission;
 import com.diamo.cobblemoneconomyplus.permission.EconomyPermissions;
 import com.diamo.cobblemoneconomyplus.reward.RewardManager;
+import com.diamo.cobblemoneconomyplus.shop.PurchaseSavedData;
 import com.diamo.cobblemoneconomyplus.shop.ShopDefinition;
 import com.diamo.cobblemoneconomyplus.shop.ShopManager;
 import com.diamo.cobblemoneconomyplus.shop.Shopkeeper;
@@ -144,6 +147,19 @@ public final class EconomyCommands {
                         )
                         .then(Commands.literal("list")
                                 .executes(context -> listShops(context.getSource()))
+                        )
+                        .then(Commands.literal("restock")
+                                .executes(context -> restock(context.getSource()))
+                        )
+                        .then(Commands.literal("limits")
+                                .then(Commands.literal("reset")
+                                        .then(Commands.argument("player", GameProfileArgument.gameProfile())
+                                                .executes(context -> resetLimits(
+                                                        context.getSource(),
+                                                        GameProfileArgument.getGameProfiles(context, "player")
+                                                ))
+                                        )
+                                )
                         )
                 )
                 .then(Commands.literal("shopkeeper")
@@ -410,8 +426,8 @@ public final class EconomyCommands {
     private static final int MAX_PROBLEMS_IN_CHAT = 5;
 
     private static int reloadShops(CommandSourceStack source) {
-        ShopManager.Report report = withRewards(ShopManager.reload(source.getServer()),
-                RewardManager.reload(source.getServer()));
+        ShopManager.Report report = withOtherFiles(ShopManager.reload(source.getServer()),
+                RewardManager.reload(source.getServer()), ModConfig.reload(source.getServer()));
         if (report.ok()) {
             source.sendSuccess(() -> Component.translatable("command.cobblemon_economy_plus.shops_reloaded",
                     report.shopCount(), report.itemValueCount()), true);
@@ -423,8 +439,8 @@ public final class EconomyCommands {
     }
 
     private static int validateShops(CommandSourceStack source) {
-        ShopManager.Report report = withRewards(ShopManager.validate(source.getServer()),
-                RewardManager.validate(source.getServer()));
+        ShopManager.Report report = withOtherFiles(ShopManager.validate(source.getServer()),
+                RewardManager.validate(source.getServer()), ModConfig.validate(source.getServer()));
         if (report.ok() && report.warnings().isEmpty()) {
             source.sendSuccess(() -> Component.translatable("command.cobblemon_economy_plus.shops_valid",
                     report.shopCount(), report.itemValueCount()), false);
@@ -441,12 +457,14 @@ public final class EconomyCommands {
         return report.ok() ? 1 : 0;
     }
 
-    /** Adds the problems found in rewards.json to a shop report, so both are shown together. */
-    private static ShopManager.Report withRewards(ShopManager.Report shops, RewardManager.Result rewards) {
+    /** Adds the problems found in the other config files (rewards.json, config.json) to a shop report. */
+    private static ShopManager.Report withOtherFiles(ShopManager.Report shops, ConfigResult... others) {
         List<String> errors = new ArrayList<>(shops.errors());
-        errors.addAll(rewards.errors());
         List<String> warnings = new ArrayList<>(shops.warnings());
-        warnings.addAll(rewards.warnings());
+        for (ConfigResult other : others) {
+            errors.addAll(other.errors());
+            warnings.addAll(other.warnings());
+        }
         return new ShopManager.Report(shops.shopCount(), shops.itemValueCount(), errors, warnings);
     }
 
@@ -467,6 +485,27 @@ public final class EconomyCommands {
             source.sendSystemMessage(Component.translatable("command.cobblemon_economy_plus.config_more_problems", hidden)
                     .withStyle(ChatFormatting.GRAY));
         }
+    }
+
+    private static int restock(CommandSourceStack source) {
+        int restocked = PurchaseSavedData.get(source.getServer()).restockAll();
+        source.sendSuccess(() -> Component.translatable("command.cobblemon_economy_plus.shop_restocked", restocked), true);
+        return restocked;
+    }
+
+    private static int resetLimits(CommandSourceStack source, Collection<GameProfile> profiles) {
+        int reset = 0;
+        for (GameProfile profile : profiles) {
+            if (PurchaseSavedData.get(source.getServer()).resetPlayer(profile.getId())) {
+                reset++;
+                source.sendSuccess(() -> Component.translatable("command.cobblemon_economy_plus.limits_reset",
+                        profile.getName()), true);
+            } else {
+                source.sendSuccess(() -> Component.translatable("command.cobblemon_economy_plus.limits_reset_none",
+                        profile.getName()), false);
+            }
+        }
+        return reset;
     }
 
     private static int listShops(CommandSourceStack source) {

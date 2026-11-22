@@ -84,6 +84,10 @@ public final class TrainerBoutiqueScreen extends Screen {
     private boolean sellMode;
     /** The rows currently shown: the shop's own entries (buy) or the sellable inventory items (sell, amount = 1). */
     private List<EconomyPayloads.ShopEntryPayload> current;
+    /** What the shop sells. A copy, so purchase limits can be updated in place after each purchase. */
+    private final List<EconomyPayloads.ShopEntryPayload> buyEntries;
+    /** When each entry's restock countdown was last received (client millis), to count it down locally. */
+    private final long[] limitsReceivedAt;
     /** Sell mode only: how many of each item the player holds (pristine stacks in the main inventory). */
     private final Map<String, Integer> owned = new HashMap<>();
     private int ticks;
@@ -105,7 +109,10 @@ public final class TrainerBoutiqueScreen extends Screen {
         this.c = BoutiqueTheme.byId(shop.theme());
         this.lastBalance = ClientEconomy.balance();
         this.displayedBalance = lastBalance;
-        this.current = shop.entries();
+        this.buyEntries = new ArrayList<>(shop.entries());
+        this.limitsReceivedAt = new long[buyEntries.size()];
+        java.util.Arrays.fill(limitsReceivedAt, Util.getMillis());
+        this.current = buyEntries;
 
         tabs.add(Category.ALL);
         for (Category candidate : Category.values()) {
@@ -377,6 +384,15 @@ public final class TrainerBoutiqueScreen extends Screen {
                     ? Component.translatable("gui.cobblemon_economy_plus.sell_owned", ownedCount(entry)).getString()
                     : "×" + entry.amount();
             g.drawString(font, secondLine, rowX + 28, rowY + 13, c.inkMuted, false);
+            if (!sellMode) {
+                String limits = limitText(entry, visible.get(pos));
+                if (!limits.isEmpty()) {
+                    int limitX = rowX + 28 + font.width(secondLine) + 6;
+                    int room = rowX + rowW - 6 - font.width(price) - 9 - limitX;
+                    g.drawString(font, abbreviate(limits, room), limitX, rowY + 13,
+                            entry.allowed() == 0 ? 0xFFC0392B : c.inkMuted, false);
+                }
+            }
 
             int priceX = rowX + rowW - 6 - font.width(price);
             drawCoin(g, priceX - 7, rowY + 11, 3);
@@ -451,8 +467,9 @@ public final class TrainerBoutiqueScreen extends Screen {
         g.drawString(font, q, boxX + (boxW - font.width(q)) / 2, stepperY + 4, WHITE, false);
 
         long total = totalPrice(entry);
-        // Selling always "affords" itself; buying needs enough coins.
-        boolean affordable = sellMode || displayedBalance + 0.5 >= total;
+        // Selling always "affords" itself; buying needs enough coins and something left to buy.
+        boolean soldOut = !sellMode && entry.allowed() == 0 && !restockDue(entry, visible.get(selectedPos));
+        boolean affordable = sellMode || (displayedBalance + 0.5 >= total && !soldOut);
         g.drawString(font, Component.translatable(sellMode
                         ? "gui.cobblemon_economy_plus.sell_proceeds"
                         : "gui.cobblemon_economy_plus.boutique_total"),
@@ -485,6 +502,9 @@ public final class TrainerBoutiqueScreen extends Screen {
         Component label = Component.translatable(sellMode
                 ? "gui.cobblemon_economy_plus.sell_button"
                 : (affordable ? "gui.cobblemon_economy_plus.boutique_buy"
+                        : soldOut ? (entry.hasStock() && entry.stockLeft() == 0
+                                ? "gui.cobblemon_economy_plus.boutique_sold_out"
+                                : "gui.cobblemon_economy_plus.boutique_limit_reached")
                         : "gui.cobblemon_economy_plus.boutique_cant_afford"));
         g.drawString(font, label, bx + (bw - font.width(label)) / 2, by + 3, affordable ? WHITE : 0xFF8A93A6, affordable);
     }
@@ -882,7 +902,8 @@ public final class TrainerBoutiqueScreen extends Screen {
                     shop.shopId(), entry.itemId(), quantity, entry.price()));
             return;
         }
-        if (ClientEconomy.balance() < totalPrice(entry)) {
+        if (ClientEconomy.balance() < totalPrice(entry)
+                || (entry.allowed() < quantity && !restockDue(entry, visible.get(selectedPos)))) {
             playUiSound(CobblemonSounds.GUI_CLICK);
             return;
         }
@@ -907,7 +928,7 @@ public final class TrainerBoutiqueScreen extends Screen {
             category = Category.ALL;
             refreshSellEntries();
         } else {
-            current = shop.entries();
+            current = buyEntries;
         }
         rebuildVisible(-1);
         playUiSound(CobblemonSounds.GUI_CLICK);
@@ -1035,7 +1056,76 @@ public final class TrainerBoutiqueScreen extends Screen {
             // A whole main inventory at most (36 stacks of 64), matching the server's limit.
             return Math.max(1, Math.min(ownedCount(entry), 36 * 64));
         }
-        return Math.max(1, 64 / Math.max(1, entry.amount()));
+        return Math.max(1, Math.min(64 / Math.max(1, entry.amount()), entry.allowed()));
+    }
+
+    // ------------------------------------------------------------------ purchase limits
+
+    /** Applies the server's new remaining counts for one entry after a purchase. */
+    public void applyEntryUpdate(EconomyPayloads.ShopEntryUpdatePayload update) {
+        if (!update.shopId().equals(shop.shopId()) || update.entryIndex() < 0 || update.entryIndex() >= buyEntries.size()) {
+            return;
+        }
+        buyEntries.set(update.entryIndex(), buyEntries.get(update.entryIndex())
+                .withRemaining(update.limitLeft(), update.stockLeft(), update.restockSeconds()));
+        limitsReceivedAt[update.entryIndex()] = Util.getMillis();
+        EconomyPayloads.ShopEntryPayload selected = selectedEntry();
+        if (selected != null) {
+            quantity = Math.max(1, Math.min(quantity, maxQuantity(selected)));
+        }
+    }
+
+    /**
+     * Whether a sold-out stock should have refilled by now (its countdown ran out). The server has the final say, so
+     * the screen then lets the player try again instead of waiting for a reopen.
+     */
+    private boolean restockDue(EconomyPayloads.ShopEntryPayload entry, int index) {
+        if (!entry.hasStock() || entry.stockLeft() > 0 || entry.restockSeconds() < 0
+                || (entry.hasLimit() && entry.limitLeft() <= 0)) {
+            return false;
+        }
+        return (Util.getMillis() - limitsReceivedAt[index]) / 1000L >= entry.restockSeconds();
+    }
+
+    /** "This week 1/3 · Stock 2" style text for a limited entry; empty without limits. */
+    private String limitText(EconomyPayloads.ShopEntryPayload entry, int index) {
+        StringBuilder text = new StringBuilder();
+        if (entry.hasLimit()) {
+            String period = switch (entry.period()) {
+                case 0 -> "daily";
+                case 1 -> "weekly";
+                default -> "never";
+            };
+            text.append(Component.translatable("gui.cobblemon_economy_plus.limit_" + period,
+                    Math.max(0, entry.limitLeft()), entry.limitMax()).getString());
+        }
+        if (entry.hasStock()) {
+            if (text.length() > 0) {
+                text.append("  ");
+            }
+            if (entry.stockLeft() > 0) {
+                text.append(Component.translatable("gui.cobblemon_economy_plus.stock_left", entry.stockLeft()).getString());
+            } else {
+                text.append(Component.translatable("gui.cobblemon_economy_plus.stock_sold_out").getString());
+                if (entry.restockSeconds() >= 0) {
+                    long elapsed = (Util.getMillis() - limitsReceivedAt[index]) / 1000L;
+                    long seconds = Math.max(0L, entry.restockSeconds() - elapsed);
+                    text.append(' ').append(Component.translatable("gui.cobblemon_economy_plus.stock_restock",
+                            formatDuration(seconds)).getString());
+                }
+            }
+        }
+        return text.toString();
+    }
+
+    private static String formatDuration(long seconds) {
+        if (seconds >= 86_400L) {
+            return String.format(Locale.ROOT, "%dd%02dh", seconds / 86_400L, seconds % 86_400L / 3_600L);
+        }
+        if (seconds >= 3_600L) {
+            return String.format(Locale.ROOT, "%dh%02dm", seconds / 3_600L, seconds % 3_600L / 60L);
+        }
+        return String.format(Locale.ROOT, "%d:%02d", seconds / 60L, seconds % 60L);
     }
 
     private long totalPrice(EconomyPayloads.ShopEntryPayload entry) {

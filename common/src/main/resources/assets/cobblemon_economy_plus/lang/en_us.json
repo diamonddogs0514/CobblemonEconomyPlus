@@ -126,5 +126,19 @@
   "command.cobblemon_economy_plus.top_not_ranked": "You are not ranked yet (players with 0 coins are not listed).",
   "command.cobblemon_economy_plus.top_next_page": "Next page: %s",
   "command.cobblemon_economy_plus.top_empty": "Nobody has any coins yet.",
-  "command.cobblemon_economy_plus.top_no_page": "That page does not exist. Pages: 1-%s."
+  "command.cobblemon_economy_plus.top_no_page": "That page does not exist. Pages: 1-%s.",
+  "gui.cobblemon_economy_plus.boutique_sold_out": "Sold out",
+  "gui.cobblemon_economy_plus.boutique_limit_reached": "Purchase limit reached",
+  "gui.cobblemon_economy_plus.limit_daily": "Today %s/%s left",
+  "gui.cobblemon_economy_plus.limit_weekly": "This week %s/%s left",
+  "gui.cobblemon_economy_plus.limit_never": "%s/%s left",
+  "gui.cobblemon_economy_plus.stock_left": "Stock %s",
+  "gui.cobblemon_economy_plus.stock_sold_out": "Sold out",
+  "gui.cobblemon_economy_plus.stock_restock": "(restock in %s)",
+  "message.cobblemon_economy_plus.purchase_only_left": "You can only buy %s more.",
+  "message.cobblemon_economy_plus.purchase_sold_out": "Sold out.",
+  "message.cobblemon_economy_plus.purchase_limit_reached": "You have reached the purchase limit for this item.",
+  "command.cobblemon_economy_plus.shop_restocked": "Restocked (%s item(s) were not full).",
+  "command.cobblemon_economy_plus.limits_reset": "Reset the purchase counts of %s.",
+  "command.cobblemon_economy_plus.limits_reset_none": "%s has no purchase counts to reset."
 }

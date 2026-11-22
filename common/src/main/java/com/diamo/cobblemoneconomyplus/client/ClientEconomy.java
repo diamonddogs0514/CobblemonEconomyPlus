@@ -40,6 +40,13 @@ public final class ClientEconomy {
         Minecraft.getInstance().setScreen(new TrainerCardScreen());
     }
 
+    /** Updates the remaining counts of a limited entry in the open shop screen (ignored when another screen is open). */
+    public static void handleEntryUpdate(EconomyPayloads.ShopEntryUpdatePayload payload) {
+        if (Minecraft.getInstance().screen instanceof TrainerBoutiqueScreen screen) {
+            screen.applyEntryUpdate(payload);
+        }
+    }
+
     public static void handleOpenShop(EconomyPayloads.OpenShopPayload payload) {
         applyBalance(payload.balance());
         // Names/subtitles may be per-language objects; pick the viewer's language once, here.

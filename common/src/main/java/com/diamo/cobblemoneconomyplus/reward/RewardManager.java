@@ -1,6 +1,7 @@
 package com.diamo.cobblemoneconomyplus.reward;
 
 import com.diamo.cobblemoneconomyplus.CobblemonEconomyPlus;
+import com.diamo.cobblemoneconomyplus.config.ConfigResult;
 import com.google.gson.JsonParseException;
 import net.minecraft.server.MinecraftServer;
 
@@ -24,19 +25,11 @@ public final class RewardManager {
     private RewardManager() {
     }
 
-    /** Problems found while loading. {@code errors} mean the file was not used at all. */
-    public record Result(List<String> errors, List<String> warnings) {
-        public Result {
-            errors = List.copyOf(errors);
-            warnings = List.copyOf(warnings);
-        }
-    }
-
     public static RewardConfig config() {
         return config;
     }
 
-    public static synchronized Result reload(MinecraftServer server) {
+    public static synchronized ConfigResult reload(MinecraftServer server) {
         boolean firstLoad = loadedFor != server;
         Path path = path(server);
         List<String> errors = new ArrayList<>();
@@ -68,24 +61,24 @@ public final class RewardManager {
                     ? "Using the built-in reward defaults until it is fixed and reloaded."
                     : "Keeping the previously loaded reward settings.");
         }
-        return new Result(errors, warnings);
+        return new ConfigResult(errors, warnings);
     }
 
     /** Checks rewards.json without applying it. */
-    public static Result validate(MinecraftServer server) {
+    public static ConfigResult validate(MinecraftServer server) {
         Path path = path(server);
         List<String> errors = new ArrayList<>();
         List<String> warnings = new ArrayList<>();
         if (!Files.exists(path)) {
             errors.add(FILE_NAME + ": file not found (" + path + "); it is created with defaults on the next reload");
-            return new Result(errors, warnings);
+            return new ConfigResult(errors, warnings);
         }
         try {
             read(Files.readString(path, StandardCharsets.UTF_8), errors, warnings);
         } catch (IOException exception) {
             errors.add(FILE_NAME + ": could not read " + path + ": " + exception.getMessage());
         }
-        return new Result(errors, warnings);
+        return new ConfigResult(errors, warnings);
     }
 
     /** Parses the file text; returns null (and adds an error) when it cannot be used. Never throws. */

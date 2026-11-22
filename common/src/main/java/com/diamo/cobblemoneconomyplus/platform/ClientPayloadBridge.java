@@ -12,6 +12,7 @@ import java.util.function.Consumer;
 public final class ClientPayloadBridge {
     private static Consumer<EconomyPayloads.BalancePayload> balanceHandler;
     private static Consumer<EconomyPayloads.OpenShopPayload> openShopHandler;
+    private static Consumer<EconomyPayloads.ShopEntryUpdatePayload> entryUpdateHandler;
 
     private static Runnable openCardHandler;
 
@@ -34,6 +35,16 @@ public final class ClientPayloadBridge {
 
     public static void setOpenShopHandler(Consumer<EconomyPayloads.OpenShopPayload> handler) {
         openShopHandler = Objects.requireNonNull(handler, "handler");
+    }
+
+    public static void setEntryUpdateHandler(Consumer<EconomyPayloads.ShopEntryUpdatePayload> handler) {
+        entryUpdateHandler = Objects.requireNonNull(handler, "handler");
+    }
+
+    public static void handleEntryUpdate(EconomyPayloads.ShopEntryUpdatePayload payload) {
+        if (entryUpdateHandler != null) {
+            entryUpdateHandler.accept(payload);
+        }
     }
 
     public static void handleBalance(EconomyPayloads.BalancePayload payload) {
