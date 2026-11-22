@@ -16,6 +16,9 @@ mainly for multiplayer servers.
 - A **shop screen** opened by right-clicking an NPC: buy / sell, category pager, quantity picker, 11 visual themes.
 - **Selling:** items are bought back at an admin-defined *base value* multiplied by a per-shop *multiplier*.
 - **Cobblemon rewards:** coins for winning wild and trainer battles (more for alphas), captures and Pokédex milestones, each switchable.
+- **Purchase limits and stock** per item: daily / weekly / once per player, and shared stock that restocks over time.
+- An **in-game admin screen** to edit shops, items and sell values without touching the files.
+- A **balance ranking** (`/cep top`).
 - **Player-to-player payments** (`/pay`); balances of offline players can be managed too.
 - **Permission support** for LuckPerms and similar mods, and a public **API** for other mods.
 - A **transaction log** of every balance change.
