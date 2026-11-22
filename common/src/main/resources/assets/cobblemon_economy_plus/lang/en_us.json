@@ -112,5 +112,12 @@
   "gui.cobblemon_economy_plus.sell_owned_detail": "Owned  x%s",
   "gui.cobblemon_economy_plus.sell_proceeds": "Proceeds",
   "gui.cobblemon_economy_plus.sell_after": "After",
-  "gui.cobblemon_economy_plus.sell_button": "Sell"
+  "gui.cobblemon_economy_plus.sell_button": "Sell",
+  "message.cobblemon_economy_plus.reward.wild_battle": "+%s coins (wild battle won)",
+  "message.cobblemon_economy_plus.reward.wild_battle_alpha": "+%s coins (alpha Pokémon defeated)",
+  "message.cobblemon_economy_plus.reward.trainer_battle": "+%s coins (trainer defeated)",
+  "message.cobblemon_economy_plus.reward.capture": "+%s coins (capture)",
+  "message.cobblemon_economy_plus.reward.capture_alpha": "+%s coins (alpha Pokémon caught)",
+  "message.cobblemon_economy_plus.reward.pokedex_milestone": "Pokédex milestone! You have caught %s species. +%s coins",
+  "message.cobblemon_economy_plus.reward.daily_cap": "You have reached today's reward limit."
 }

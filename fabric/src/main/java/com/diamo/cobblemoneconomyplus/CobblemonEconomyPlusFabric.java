@@ -14,10 +14,8 @@ import net.minecraft.world.InteractionResult;
 
 import com.diamo.cobblemoneconomyplus.command.EconomyCommands;
 import com.diamo.cobblemoneconomyplus.content.ShopEditorItem;
-import com.diamo.cobblemoneconomyplus.economy.EconomyService;
 import com.diamo.cobblemoneconomyplus.network.EconomyPayloads;
 import com.diamo.cobblemoneconomyplus.platform.PlatformNetworking;
-import com.diamo.cobblemoneconomyplus.shop.ShopManager;
 import com.diamo.cobblemoneconomyplus.shop.ShopService;
 import com.diamo.cobblemoneconomyplus.shop.Shopkeeper;
 
@@ -41,12 +39,13 @@ public final class CobblemonEconomyPlusFabric implements ModInitializer {
         ServerPlayNetworking.registerGlobalReceiver(EconomyPayloads.SellActionPayload.TYPE, (payload, context) ->
                 context.server().execute(() -> ShopService.handleSale(context.player(), payload))
         );
-        ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> EconomyService.sync(handler.player));
+        ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> CobblemonEconomyPlus.onPlayerJoin(handler.player));
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
             ShopService.onDisconnect(handler.player.getUUID());
             ShopEditorItem.onDisconnect(handler.player.getUUID());
         });
-        ServerLifecycleEvents.SERVER_STARTED.register(ShopManager::reload);
+        ServerLifecycleEvents.SERVER_STARTED.register(CobblemonEconomyPlus::onServerStarted);
+        ServerLifecycleEvents.SERVER_STOPPED.register(CobblemonEconomyPlus::onServerStopped);
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> EconomyCommands.register(dispatcher));
 
         // Scoreboard tags are server-side only, so the attack is cancelled on the server.

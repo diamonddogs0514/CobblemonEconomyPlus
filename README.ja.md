@@ -15,6 +15,7 @@ Cobblemon に経済の仕組みを加える、Minecraft 1.21.1 向けの Mod で
 - プレイヤーごとの通貨を、ワールドに永続保存(アイテム化しないので、落とす・盗まれる・複製される心配がありません)
 - NPC に話しかけて開く**ショップ画面**: 買う / 売る、カテゴリ切替、数量指定、11種類のデザイン(テーマ)
 - 売却: 管理者が登録した「基準額」に、ショップごとの**倍率**を掛けた価格でアイテムを買い取ります
+- **Cobblemon の報酬**: 野生・トレーナーとのバトルの勝利(親分は増額)、捕獲、図鑑の節目でコインがもらえます(それぞれ切り替え可能)
 - プレイヤー間の**送金**(`/pay`)、オフラインのプレイヤーの所持金も管理可能
 - LuckPerms などの**権限管理**に対応、他の Mod から使える**公開 API**
 - すべての残高の変動を記録する**取引ログ**
@@ -46,8 +47,8 @@ Cobblemon に経済の仕組みを加える、Minecraft 1.21.1 向けの Mod で
 | `/cep money add <players> <amount>` | 所持金を増やす | 同上 |
 | `/cep money take <players> <amount>` | 所持金を減らす(不足なら変更しない) | 同上 |
 | `/cep history <player> [件数]` | そのプレイヤーの直近の取引を表示(既定10件・最大50件、UTC) | `cobblemon_economy_plus.history`(OP2) |
-| `/cep shop reload` / `/cep shop list` | ショップ設定の再読込 / 一覧。エラーのあるファイルは前の設定のまま | `cobblemon_economy_plus.shop`(OP2) |
-| `/cep shop validate` | shops.json と item_values.json を反映せずに検査(行番号つきのエラー、飛ばした項目、売り買いで儲かる設定) | 同上 |
+| `/cep shop reload` / `/cep shop list` | 設定ファイル(ショップ・売却価格・報酬)の再読込 / ショップの一覧。エラーのあるファイルは前の設定のまま | `cobblemon_economy_plus.shop`(OP2) |
+| `/cep shop validate` | shops.json・item_values.json・rewards.json を反映せずに検査(行番号つきのエラー、飛ばした項目、売り買いで儲かる設定) | 同上 |
 | `/cep shopkeeper set <npc> <shop_id>` / `clear <npc>` | NPC にショップを設定 / 解除 | `cobblemon_economy_plus.shopkeeper`(OP2) |
 | `/cep shopkeeper remove <npcs>` | 店員 NPC を削除(選択に含まれる店員以外は無視) | `cobblemon_economy_plus.shopkeeper.remove`(OP2) |
 
@@ -108,6 +109,50 @@ Cobblemon に経済の仕組みを加える、Minecraft 1.21.1 向けの Mod で
 アイテム単位の個別価格はありません(ショップごとの倍率で調整します)。
 **買値より買取価格が高いアイテムがあると、起動時・再読込時にサーバーログへ警告が出ます**(買って売るだけで儲かる設定です)。
 
+### Cobblemon の報酬(`rewards.json`)
+
+バトルに勝つ・ポケモンを捕まえる・図鑑を埋めると、コインがもらえます(1.1.0 以降)。もらった額は画面下(アクションバー)に表示され、
+取引ログには `reward:wild_battle` などの理由で記録されます。
+
+| 種類 | 設定の名前 | 既定の金額(レベルは相手のポケモンのレベル) |
+|---|---|---|
+| 野生バトルの勝利 | `wild_battle` | 10 + レベル × 1 |
+| 野生バトルの勝利(親分) | `wild_battle_alpha` | 100 + レベル × 5 |
+| トレーナー(Cobblemon の NPC)に勝利 | `trainer_battle` | 100 + 相手の手持ちの最高レベル × 5 |
+| 捕獲 | `capture` | 5 + レベル × 1 |
+| 捕獲(親分) | `capture_alpha` | 50 + レベル × 3 |
+| 図鑑の節目(捕まえた種類の数) | `pokedex_milestones` | 10 種で 500 〜 1000 種で 50,000(下の例) |
+
+```json
+{
+  "enabled": true,
+  "daily_cap": 0,
+  "wild_battle":       { "enabled": true, "base": 10,  "per_level": 1 },
+  "wild_battle_alpha": { "enabled": true, "base": 100, "per_level": 5 },
+  "trainer_battle":    { "enabled": true, "base": 100, "per_level": 5 },
+  "capture":           { "enabled": true, "base": 5,   "per_level": 1 },
+  "capture_alpha":     { "enabled": true, "base": 50,  "per_level": 3 },
+  "pokedex_milestones": {
+    "enabled": true,
+    "milestones": {
+      "10": 500, "25": 1000, "50": 2500, "100": 5000, "150": 7500, "200": 10000,
+      "300": 15000, "400": 20000, "500": 25000, "600": 30000, "700": 35000,
+      "800": 40000, "900": 45000, "1000": 50000
+    }
+  }
+}
+```
+
+- 金額は `base + レベル × per_level`。種類ごとに `enabled` で切り替えられ、一番上の `enabled` で全部まとめて止められます。
+  書いていない項目は既定の値になります。
+- 親分の項目を `false` にすると、親分も普通のポケモンと同じ金額になります(親分だけ報酬なしにしたいときは `base` と `per_level` を 0 に)。
+- `daily_cap`: 1 人が 1 日にバトル・捕獲でもらえる合計の上限(0 = 上限なし)。サーバーの時刻の 0 時にリセットされます。図鑑の節目は対象外です。
+- 図鑑の節目は 1 人 1 回だけです。1.1.0 を入れる前に越えていた節目は、次にログインしたときにまとめて支払われます。
+- 対象外: プレイヤー同士のバトル、負けた・逃げたとき、バトル中に捕まえたポケモン(捕獲の報酬だけ出ます)。
+- タグ `cep_no_reward` の付いた NPC は、勝ってもトレーナーの報酬が出ません(例: `/tag @e[type=cobblemon:npc,limit=1,sort=nearest] add cep_no_reward`)。
+- 何度でも戦える NPC がいるサーバーでは、`daily_cap` か `cep_no_reward` で稼ぎすぎを防いでください。
+- 他の Mod は、報酬を払う前に取り消したり金額を変えたりできます(下の「イベント」)。
+
 ### テーマ(デザイン)
 
 `pokeball`(モンスターボール) / `greatball` / `ultraball` / `masterball` / `tm`(わざマシン) / `berry`(きのみ) /
@@ -146,6 +191,7 @@ NPC ごとに上書きもできます。**ショップエディター**(クリ�
 ### 保存データ
 
 残高はワールドのデータ(`data/cobblemon_economy_plus_balances.dat`)に UUID 単位で保存されます。
+報酬の記録(受け取り済みの図鑑の節目、その日の報酬の合計)は `data/cobblemon_economy_plus_rewards.dat` に保存されます。
 データ形式に版番号を持たせてあり、将来の更新で既存のワールドを移行できるようにしています。
 **更新前にワールドのバックアップを取ってください。**
 

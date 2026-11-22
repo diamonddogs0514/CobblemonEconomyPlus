@@ -10,6 +10,8 @@ dependencies {
     // Required at development runtime; neither dependency is bundled into this add-on's jar.
     implementation("maven.modrinth:cobblemon:${rootProject.properties["cobblemon_neoforge_version_id"]}")
     runtimeOnly("maven.modrinth:kotlin-for-forge:${rootProject.properties["kotlin_for_forge_version_id"]}")
+    // Cobblemon's event API (subscribe) uses Kotlin types; Kotlin for Forge provides them at runtime.
+    compileOnly("org.jetbrains.kotlin:kotlin-stdlib:${libs.versions.kotlin.get()}")
 }
 
 val parchmentVersion = libs.versions.parchment.get()

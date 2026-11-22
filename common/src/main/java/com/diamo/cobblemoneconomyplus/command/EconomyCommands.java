@@ -6,6 +6,7 @@ import com.diamo.cobblemoneconomyplus.economy.EconomyService;
 import com.diamo.cobblemoneconomyplus.economy.TransactionLog;
 import com.diamo.cobblemoneconomyplus.permission.EconomyPermission;
 import com.diamo.cobblemoneconomyplus.permission.EconomyPermissions;
+import com.diamo.cobblemoneconomyplus.reward.RewardManager;
 import com.diamo.cobblemoneconomyplus.shop.ShopDefinition;
 import com.diamo.cobblemoneconomyplus.shop.ShopManager;
 import com.diamo.cobblemoneconomyplus.shop.Shopkeeper;
@@ -27,6 +28,7 @@ import net.minecraft.world.entity.Entity;
 
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -332,7 +334,8 @@ public final class EconomyCommands {
     private static final int MAX_PROBLEMS_IN_CHAT = 5;
 
     private static int reloadShops(CommandSourceStack source) {
-        ShopManager.Report report = ShopManager.reload(source.getServer());
+        ShopManager.Report report = withRewards(ShopManager.reload(source.getServer()),
+                RewardManager.reload(source.getServer()));
         if (report.ok()) {
             source.sendSuccess(() -> Component.translatable("command.cobblemon_economy_plus.shops_reloaded",
                     report.shopCount(), report.itemValueCount()), true);
@@ -344,7 +347,8 @@ public final class EconomyCommands {
     }
 
     private static int validateShops(CommandSourceStack source) {
-        ShopManager.Report report = ShopManager.validate(source.getServer());
+        ShopManager.Report report = withRewards(ShopManager.validate(source.getServer()),
+                RewardManager.validate(source.getServer()));
         if (report.ok() && report.warnings().isEmpty()) {
             source.sendSuccess(() -> Component.translatable("command.cobblemon_economy_plus.shops_valid",
                     report.shopCount(), report.itemValueCount()), false);
@@ -359,6 +363,15 @@ public final class EconomyCommands {
         }
         sendProblems(source, report);
         return report.ok() ? 1 : 0;
+    }
+
+    /** Adds the problems found in rewards.json to a shop report, so both are shown together. */
+    private static ShopManager.Report withRewards(ShopManager.Report shops, RewardManager.Result rewards) {
+        List<String> errors = new ArrayList<>(shops.errors());
+        errors.addAll(rewards.errors());
+        List<String> warnings = new ArrayList<>(shops.warnings());
+        warnings.addAll(rewards.warnings());
+        return new ShopManager.Report(shops.shopCount(), shops.itemValueCount(), errors, warnings);
     }
 
     private static void sendProblems(CommandSourceStack source, ShopManager.Report report) {

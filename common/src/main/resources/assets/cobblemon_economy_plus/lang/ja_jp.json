@@ -112,5 +112,12 @@
   "gui.cobblemon_economy_plus.sell_owned_detail": "所持数  ×%s",
   "gui.cobblemon_economy_plus.sell_proceeds": "売却額",
   "gui.cobblemon_economy_plus.sell_after": "売却後",
-  "gui.cobblemon_economy_plus.sell_button": "売却する"
+  "gui.cobblemon_economy_plus.sell_button": "売却する",
+  "message.cobblemon_economy_plus.reward.wild_battle": "+%s コイン(野生バトルの勝利)",
+  "message.cobblemon_economy_plus.reward.wild_battle_alpha": "+%s コイン(親分ポケモンに勝利)",
+  "message.cobblemon_economy_plus.reward.trainer_battle": "+%s コイン(トレーナーに勝利)",
+  "message.cobblemon_economy_plus.reward.capture": "+%s コイン(捕獲)",
+  "message.cobblemon_economy_plus.reward.capture_alpha": "+%s コイン(親分ポケモンを捕獲)",
+  "message.cobblemon_economy_plus.reward.pokedex_milestone": "図鑑の節目達成! 捕まえたポケモンが %s 種類になりました。+%s コイン",
+  "message.cobblemon_economy_plus.reward.daily_cap": "今日の報酬の上限に達しました。"
 }

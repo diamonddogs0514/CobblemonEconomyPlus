@@ -2,11 +2,9 @@ package com.diamo.cobblemoneconomyplus;
 
 import com.diamo.cobblemoneconomyplus.command.EconomyCommands;
 import com.diamo.cobblemoneconomyplus.content.ShopEditorItem;
-import com.diamo.cobblemoneconomyplus.economy.EconomyService;
 import com.diamo.cobblemoneconomyplus.network.EconomyPayloads;
 import com.diamo.cobblemoneconomyplus.platform.ClientPayloadBridge;
 import com.diamo.cobblemoneconomyplus.platform.PlatformNetworking;
-import com.diamo.cobblemoneconomyplus.shop.ShopManager;
 import com.diamo.cobblemoneconomyplus.shop.ShopService;
 import com.diamo.cobblemoneconomyplus.shop.Shopkeeper;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
@@ -18,6 +16,7 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
+import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
@@ -43,6 +42,7 @@ public final class CobblemonEconomyPlusNeoForge {
         NeoForge.EVENT_BUS.addListener(this::onAttackEntity);
         NeoForge.EVENT_BUS.addListener(this::onIncomingDamage);
         NeoForge.EVENT_BUS.addListener(this::onServerStarted);
+        NeoForge.EVENT_BUS.addListener(this::onServerStopped);
     }
 
     private void registerPayloads(RegisterPayloadHandlersEvent event) {
@@ -75,7 +75,7 @@ public final class CobblemonEconomyPlusNeoForge {
 
     private void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
-            EconomyService.sync(player);
+            CobblemonEconomyPlus.onPlayerJoin(player);
         }
     }
 
@@ -128,6 +128,10 @@ public final class CobblemonEconomyPlusNeoForge {
     }
 
     private void onServerStarted(ServerStartedEvent event) {
-        ShopManager.reload(event.getServer());
+        CobblemonEconomyPlus.onServerStarted(event.getServer());
+    }
+
+    private void onServerStopped(ServerStoppedEvent event) {
+        CobblemonEconomyPlus.onServerStopped(event.getServer());
     }
 }

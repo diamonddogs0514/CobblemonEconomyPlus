@@ -15,6 +15,7 @@ mainly for multiplayer servers.
 - Per-player currency stored persistently in the world (not an item, so it cannot be dropped, stolen or duplicated).
 - A **shop screen** opened by right-clicking an NPC: buy / sell, category pager, quantity picker, 11 visual themes.
 - **Selling:** items are bought back at an admin-defined *base value* multiplied by a per-shop *multiplier*.
+- **Cobblemon rewards:** coins for winning wild and trainer battles (more for alphas), captures and Pokédex milestones, each switchable.
 - **Player-to-player payments** (`/pay`); balances of offline players can be managed too.
 - **Permission support** for LuckPerms and similar mods, and a public **API** for other mods.
 - A **transaction log** of every balance change.
@@ -47,8 +48,8 @@ mainly for multiplayer servers.
 | `/cep money add <players> <amount>` | Add coins | same |
 | `/cep money take <players> <amount>` | Remove coins (unchanged if the player cannot afford it) | same |
 | `/cep history <player> [count]` | Show the player's latest transactions (default 10, max 50, UTC) | `cobblemon_economy_plus.history` (OP 2) |
-| `/cep shop reload` / `/cep shop list` | Reload shop config / list shops. A file with errors keeps its previous settings | `cobblemon_economy_plus.shop` (OP 2) |
-| `/cep shop validate` | Check shops.json and item_values.json without applying them (errors with line numbers, skipped entries, buy/sell loops) | same |
+| `/cep shop reload` / `/cep shop list` | Reload the config files (shops, item values, rewards) / list shops. A file with errors keeps its previous settings | `cobblemon_economy_plus.shop` (OP 2) |
+| `/cep shop validate` | Check shops.json, item_values.json and rewards.json without applying them (errors with line numbers, skipped entries, buy/sell loops) | same |
 | `/cep shopkeeper set <npc> <shop_id>` / `clear <npc>` | Link / unlink an NPC to a shop | `cobblemon_economy_plus.shopkeeper` (OP 2) |
 | `/cep shopkeeper remove <npcs>` | Delete shopkeeper NPCs (other entities in the selection are skipped) | `cobblemon_economy_plus.shopkeeper.remove` (OP 2) |
 
@@ -110,6 +111,51 @@ There are no per-item overrides — tune prices per shop with the multiplier.
 **If any item sells for more than it costs to buy, a warning is written to the server log** on start/reload
 (players could profit by buying and selling back).
 
+### Cobblemon rewards (`rewards.json`)
+
+Players earn coins for winning battles, catching Pokémon and filling the Pokédex (1.1.0+). The amount is shown above
+the hotbar (action bar) and logged with a reason such as `reward:wild_battle`.
+
+| Reward | Key | Default amount (level = the opposing Pokémon's level) |
+|---|---|---|
+| Wild battle won | `wild_battle` | 10 + level × 1 |
+| Wild battle won (alpha) | `wild_battle_alpha` | 100 + level × 5 |
+| Trainer (Cobblemon NPC) defeated | `trainer_battle` | 100 + highest level in the trainer's team × 5 |
+| Capture | `capture` | 5 + level × 1 |
+| Capture (alpha) | `capture_alpha` | 50 + level × 3 |
+| Pokédex milestones (species caught) | `pokedex_milestones` | 500 at 10 species up to 50,000 at 1000 (see below) |
+
+```json
+{
+  "enabled": true,
+  "daily_cap": 0,
+  "wild_battle":       { "enabled": true, "base": 10,  "per_level": 1 },
+  "wild_battle_alpha": { "enabled": true, "base": 100, "per_level": 5 },
+  "trainer_battle":    { "enabled": true, "base": 100, "per_level": 5 },
+  "capture":           { "enabled": true, "base": 5,   "per_level": 1 },
+  "capture_alpha":     { "enabled": true, "base": 50,  "per_level": 3 },
+  "pokedex_milestones": {
+    "enabled": true,
+    "milestones": {
+      "10": 500, "25": 1000, "50": 2500, "100": 5000, "150": 7500, "200": 10000,
+      "300": 15000, "400": 20000, "500": 25000, "600": 30000, "700": 35000,
+      "800": 40000, "900": 45000, "1000": 50000
+    }
+  }
+}
+```
+
+- Amount = `base + level × per_level`. Each reward has its own `enabled` switch; the top-level `enabled` turns them all off.
+  Anything left out uses its default.
+- Setting an alpha entry's `enabled` to `false` pays alphas like ordinary Pokémon (set `base` and `per_level` to 0 to pay nothing for them).
+- `daily_cap`: the most a player can earn per day from battles and captures (0 = no limit). Resets at midnight server time.
+  Pokédex milestones do not count towards it.
+- Each Pokédex milestone is paid once per player. Milestones already passed before installing 1.1.0 are paid at the next login.
+- Not rewarded: player-versus-player battles, lost or fled battles, and the battle a Pokémon was caught in (only the capture pays).
+- NPCs with the tag `cep_no_reward` pay no trainer reward (e.g. `/tag @e[type=cobblemon:npc,limit=1,sort=nearest] add cep_no_reward`).
+- If your server has NPCs that can be battled again and again, use `daily_cap` or `cep_no_reward` to prevent farming.
+- Other mods can cancel a reward or change its amount before it is paid (see *Events* below).
+
 ### Themes
 
 `pokeball`, `greatball`, `ultraball`, `masterball`, `tm`, `berry`, `stone`, `wood`, `dirt`, `ore`, `iron`
@@ -148,6 +194,7 @@ The player-name column is only filled when that player was online at the time; i
 ### Saved data
 
 Balances are stored per UUID in the world data (`data/cobblemon_economy_plus_balances.dat`).
+Reward bookkeeping (Pokédex milestones already paid, today's reward total) is in `data/cobblemon_economy_plus_rewards.dat`.
 The format carries a version number so future updates can migrate existing worlds.
 **Back up your world before updating.**
 

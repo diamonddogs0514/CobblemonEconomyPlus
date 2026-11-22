@@ -10,9 +10,16 @@
   line and column, skipped shops and entries, and buy/sell money loops.
 - API: `CobblemonEconomyApi.onBalanceChanged` (notified after every balance change) and `onReward` (cancel a
   battle / capture / Pokédex reward or change its amount before it is paid), plus `API_VERSION` (now 2).
+- Cobblemon rewards, configured in the new `config/cobblemon_economy_plus/rewards.json`: coins for winning wild
+  battles, defeating Cobblemon NPC trainers, captures (alphas pay more in battles and captures) and Pokédex milestones
+  (10 to 1000 species caught, each paid once; milestones passed earlier are paid at the next login). Each reward can be
+  switched off, amounts are `base + level × per_level`, and an optional `daily_cap` limits battle and capture rewards per
+  day. PvP battles pay nothing, and NPCs tagged `cep_no_reward` pay no trainer reward. Reward bookkeeping is saved in
+  `data/cobblemon_economy_plus_rewards.dat`.
 
 ### Changed
 - `/cep shop reload` reports problems in chat (up to 5, the rest in the server log) and how many item values were loaded.
+- `/cep shop reload` and `/cep shop validate` also cover `rewards.json`.
 
 ### Fixed
 - A syntax error in `shops.json` (such as a missing comma or a cut-off file) no longer fails with an unexplained error.

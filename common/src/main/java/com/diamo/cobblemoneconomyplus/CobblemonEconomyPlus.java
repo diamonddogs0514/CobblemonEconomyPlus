@@ -1,5 +1,11 @@
 package com.diamo.cobblemoneconomyplus;
 
+import com.diamo.cobblemoneconomyplus.economy.EconomyService;
+import com.diamo.cobblemoneconomyplus.reward.RewardManager;
+import com.diamo.cobblemoneconomyplus.reward.RewardService;
+import com.diamo.cobblemoneconomyplus.shop.ShopManager;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,6 +18,25 @@ public final class CobblemonEconomyPlus {
     }
 
     public static void init() {
+        RewardService.register();
         LOGGER.info("{} initialized", MOD_ID);
+    }
+
+    /** Called by each loader once the server has started. */
+    public static void onServerStarted(MinecraftServer server) {
+        ShopManager.reload(server);
+        RewardManager.reload(server);
+        RewardService.onServerStarted(server);
+    }
+
+    /** Called by each loader when the server is stopping. */
+    public static void onServerStopped(MinecraftServer server) {
+        RewardService.onServerStopped();
+    }
+
+    /** Called by each loader when a player joins the server. */
+    public static void onPlayerJoin(ServerPlayer player) {
+        EconomyService.sync(player);
+        RewardService.onPlayerJoin(player);
     }
 }
