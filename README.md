@@ -165,6 +165,32 @@ boolean moved = CobblemonEconomyApi.transfer(server, fromUuid, toUuid, 100, "mym
 - Methods take UUIDs, so offline players work; changes are synced to online clients automatically.
 - The trailing `reason` is written to the transaction log (defaults to `api`).
 - Command blocks and datapacks can use `/cep money ...` and `/cep pay ...`.
+  Mods that run reward commands from their config can pay coins with `cep money add <player> <amount>`.
+
+### Events (1.1.0+, `CobblemonEconomyApi.API_VERSION >= 2`)
+
+```java
+// After every balance change, whatever caused it (shops, rewards, commands, other mods).
+CobblemonEconomyApi.onBalanceChanged(change ->
+        LOGGER.info("{}: {} -> {} ({})", change.playerId(), change.previousBalance(), change.newBalance(), change.reason()));
+
+// Before a battle / capture / Pokédex reward is paid: cancel it or change the amount.
+CobblemonEconomyApi.onReward(event -> {
+    if (event.battleId() != null && MyFacility.isFacilityBattle(event.battleId())) {
+        event.cancel(); // the facility pays its own rewards, so do not pay twice
+    }
+});
+```
+
+- Register listeners once, during mod initialisation. They run on the server thread; one that throws is logged and skipped.
+- `RewardEvent` gives the reward type, player, amount, whether the Pokémon was an alpha, the level, the battle id and
+  the NPC trainer entity (for trainer battles).
+
+### Optional dependency
+
+To work with or without this mod installed, only touch `com.diamo.cobblemoneconomyplus` classes from a separate class
+that you load after checking that the mod is present (mod id `cobblemon_economy_plus`), for example with
+`FabricLoader.getInstance().isModLoaded(...)` or NeoForge's `ModList.get().isLoaded(...)`.
 
 ## Building
 

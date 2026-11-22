@@ -163,6 +163,31 @@ boolean moved = CobblemonEconomyApi.transfer(server, fromUuid, toUuid, 100, "mym
 - UUID 指定なので、オフラインのプレイヤーにも使えます。変更はオンラインのクライアントへ自動で同期されます。
 - 最後の引数 `reason` は取引ログに記録されます(省略すると `api`)。
 - コマンドブロックやデータパックからは `/cep money ...` と `/cep pay ...` を使えます。
+  設定ファイルで報酬コマンドを実行できる Mod なら、`cep money add <player> <amount>` でコインを配れます。
+
+### イベント(1.1.0 以降、`CobblemonEconomyApi.API_VERSION >= 2`)
+
+```java
+// 残高が変わるたびに呼ばれる(ショップ・報酬・コマンド・他の Mod など、原因を問わない)
+CobblemonEconomyApi.onBalanceChanged(change ->
+        LOGGER.info("{}: {} -> {} ({})", change.playerId(), change.previousBalance(), change.newBalance(), change.reason()));
+
+// バトル・捕獲・図鑑の報酬を払う前に呼ばれる。取り消しや金額の変更ができる
+CobblemonEconomyApi.onReward(event -> {
+    if (event.battleId() != null && MyFacility.isFacilityBattle(event.battleId())) {
+        event.cancel(); // 施設が自前で報酬を出すので、二重に払わない
+    }
+});
+```
+
+- リスナーは Mod の初期化時に 1 回だけ登録してください。サーバースレッドで呼ばれます。例外を出したリスナーは、ログに出して飛ばします。
+- `RewardEvent` からは、報酬の種類・プレイヤー・金額・親分かどうか・レベル・バトルの ID・トレーナー NPC(トレーナー戦のとき)を取れます。
+
+### 任意の依存にする
+
+この Mod が入っていなくても動かすには、`com.diamo.cobblemoneconomyplus` のクラスに触れる処理を別のクラスに分け、
+Mod(mod id `cobblemon_economy_plus`)が入っていることを確かめてから呼んでください
+(例: `FabricLoader.getInstance().isModLoaded(...)`、NeoForge の `ModList.get().isLoaded(...)`)。
 
 ## 開発・ビルド
 

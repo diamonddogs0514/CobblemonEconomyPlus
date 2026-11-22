@@ -1,5 +1,6 @@
 package com.diamo.cobblemoneconomyplus.economy;
 
+import com.diamo.cobblemoneconomyplus.api.BalanceChange;
 import com.diamo.cobblemoneconomyplus.network.EconomyPayloads;
 import com.diamo.cobblemoneconomyplus.platform.PlatformNetworking;
 import net.minecraft.server.MinecraftServer;
@@ -45,6 +46,7 @@ public final class EconomyService {
         data.setBalance(playerId, amount);
         long after = data.balance(playerId);
         TransactionLog.record(server, TransactionLog.Type.SET, playerId, after - before, after, source, detail);
+        EconomyEvents.fireBalanceChanged(new BalanceChange(playerId, before, after, source));
         return after;
     }
 
@@ -64,6 +66,7 @@ public final class EconomyService {
         long after = data.deposit(playerId, amount);
         if (after != before) {
             TransactionLog.record(server, TransactionLog.Type.DEPOSIT, playerId, after - before, after, source, detail);
+            EconomyEvents.fireBalanceChanged(new BalanceChange(playerId, before, after, source));
         }
         return after;
     }
@@ -84,7 +87,9 @@ public final class EconomyService {
             return false;
         }
         if (amount > 0L) {
-            TransactionLog.record(server, TransactionLog.Type.WITHDRAW, playerId, -amount, data.balance(playerId), source, detail);
+            long after = data.balance(playerId);
+            TransactionLog.record(server, TransactionLog.Type.WITHDRAW, playerId, -amount, after, source, detail);
+            EconomyEvents.fireBalanceChanged(new BalanceChange(playerId, after + amount, after, source));
         }
         return true;
     }
@@ -111,6 +116,8 @@ public final class EconomyService {
         data.deposit(to, amount);
         TransactionLog.record(server, TransactionLog.Type.TRANSFER_OUT, from, -amount, data.balance(from), source, "to=" + to);
         TransactionLog.record(server, TransactionLog.Type.TRANSFER_IN, to, amount, data.balance(to), source, "from=" + from);
+        EconomyEvents.fireBalanceChanged(new BalanceChange(from, data.balance(from) + amount, data.balance(from), source));
+        EconomyEvents.fireBalanceChanged(new BalanceChange(to, data.balance(to) - amount, data.balance(to), source));
         return true;
     }
 

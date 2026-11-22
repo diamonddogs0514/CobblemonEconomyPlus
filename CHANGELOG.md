@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.1.0 - Unreleased
 
 ### Added
 - Remove shopkeeper NPCs with `/cep shopkeeper remove <npcs>` or by Shift + left-clicking one twice with the
@@ -8,6 +8,8 @@
   grantable with LuckPerms). Only entities that are shopkeepers are removed.
 - `/cep shop validate` checks `shops.json` and `item_values.json` without applying them: JSON errors with their
   line and column, skipped shops and entries, and buy/sell money loops.
+- API: `CobblemonEconomyApi.onBalanceChanged` (notified after every balance change) and `onReward` (cancel a
+  battle / capture / Pokédex reward or change its amount before it is paid), plus `API_VERSION` (now 2).
 
 ### Changed
 - `/cep shop reload` reports problems in chat (up to 5, the rest in the server log) and how many item values were loaded.

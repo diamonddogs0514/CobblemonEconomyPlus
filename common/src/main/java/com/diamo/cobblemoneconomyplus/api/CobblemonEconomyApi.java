@@ -1,10 +1,13 @@
 package com.diamo.cobblemoneconomyplus.api;
 
+import com.diamo.cobblemoneconomyplus.economy.EconomyEvents;
 import com.diamo.cobblemoneconomyplus.economy.EconomyFormat;
 import com.diamo.cobblemoneconomyplus.economy.EconomyService;
 import net.minecraft.server.MinecraftServer;
 
+import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 /**
  * Public, server-side API for other mods. Balances belong to player UUIDs, so online and offline players are
@@ -20,10 +23,49 @@ import java.util.UUID;
  * <p>For command-based integration (command blocks, datapack functions) see {@code /cep money} and {@code /cep pay}.</p>
  */
 public final class CobblemonEconomyApi {
+    /**
+     * Raised whenever methods are added (never removed within a major version of the mod). 1 = 1.0.0;
+     * 2 = 1.1.0 ({@link #onBalanceChanged}, {@link #onReward}). Optional integrations can check it before using newer
+     * methods.
+     */
+    public static final int API_VERSION = 2;
+
     private static final String DEFAULT_REASON = "api";
 
     private CobblemonEconomyApi() {
     }
+
+    // ------------------------------------------------------------------ events
+
+    /**
+     * Calls {@code listener} after every balance change, whatever caused it (shops, rewards, commands, other mods).
+     * Register once during mod initialisation. Listeners run on the server thread; one that throws is logged and
+     * skipped.
+     */
+    public static void onBalanceChanged(Consumer<BalanceChange> listener) {
+        EconomyEvents.addBalanceListener(Objects.requireNonNull(listener, "listener"));
+    }
+
+    /**
+     * Calls {@code listener} before this mod pays a reward (battles, captures, Pokédex milestones), so it can be
+     * cancelled or its amount changed. See {@link RewardEvent} for an example. Register once during mod
+     * initialisation. Listeners run on the server thread; one that throws is logged and skipped.
+     */
+    public static void onReward(Consumer<RewardEvent> listener) {
+        EconomyEvents.addRewardListener(Objects.requireNonNull(listener, "listener"));
+    }
+
+    /** Removes a listener added with {@link #onBalanceChanged}. */
+    public static void removeBalanceListener(Consumer<BalanceChange> listener) {
+        EconomyEvents.removeBalanceListener(listener);
+    }
+
+    /** Removes a listener added with {@link #onReward}. */
+    public static void removeRewardListener(Consumer<RewardEvent> listener) {
+        EconomyEvents.removeRewardListener(listener);
+    }
+
+    // ------------------------------------------------------------------ balances
 
     /** The player's balance in coins (0 if they have none). */
     public static long getBalance(MinecraftServer server, UUID playerId) {
