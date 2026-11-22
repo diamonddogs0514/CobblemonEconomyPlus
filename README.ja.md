@@ -42,6 +42,7 @@ Cobblemon に経済の仕組みを加える、Minecraft 1.21.1 向けの Mod で
 | `/cep balance` | 自分の所持金を確認 | `cobblemon_economy_plus.balance`(全員) |
 | `/cep balance <player>` | 他のプレイヤーの所持金を確認 | `cobblemon_economy_plus.balance.others`(OP2) |
 | `/cep pay <player> <amount>`、`/pay <player> <amount>` | 送金 | `cobblemon_economy_plus.pay`(全員) |
+| `/cep top [ページ]` | 所持金ランキング(1 ページ 10 人、自分の順位も表示。オフラインのプレイヤーも含む) | `cobblemon_economy_plus.top`(全員) |
 | `/cep money get <player>` | 所持金を確認 | `cobblemon_economy_plus.money`(OP2) |
 | `/cep money set <players> <amount>` | 所持金を設定 | 同上 |
 | `/cep money add <players> <amount>` | 所持金を増やす | 同上 |

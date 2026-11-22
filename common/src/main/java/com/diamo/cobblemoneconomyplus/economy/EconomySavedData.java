@@ -92,6 +92,11 @@ public final class EconomySavedData extends SavedData {
         return tag;
     }
 
+    /** A copy of every stored balance (players with 0 coins are not stored). */
+    public Map<UUID, Long> balances() {
+        return Map.copyOf(balances);
+    }
+
     public long balance(UUID playerId) {
         return balances.getOrDefault(playerId, 0L);
     }

@@ -1,7 +1,9 @@
 package com.diamo.cobblemoneconomyplus.command;
 
 import com.diamo.cobblemoneconomyplus.api.CobblemonEconomyApi;
+import com.diamo.cobblemoneconomyplus.economy.BalanceRanking;
 import com.diamo.cobblemoneconomyplus.economy.EconomyFormat;
+import com.diamo.cobblemoneconomyplus.economy.EconomySavedData;
 import com.diamo.cobblemoneconomyplus.economy.EconomyService;
 import com.diamo.cobblemoneconomyplus.economy.TransactionLog;
 import com.diamo.cobblemoneconomyplus.permission.EconomyPermission;
@@ -23,7 +25,9 @@ import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.commands.arguments.GameProfileArgument;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.players.GameProfileCache;
 import net.minecraft.world.entity.Entity;
 
 import java.time.ZoneOffset;
@@ -31,6 +35,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -100,6 +105,16 @@ public final class EconomyCommands {
                                                 ))
                                         )
                                 )
+                        )
+                )
+                .then(Commands.literal("top")
+                        .requires(source -> EconomyPermissions.has(source, EconomyPermission.TOP))
+                        .executes(context -> showTop(context.getSource(), 1))
+                        .then(Commands.argument("page", IntegerArgumentType.integer(1))
+                                .executes(context -> showTop(
+                                        context.getSource(),
+                                        IntegerArgumentType.getInteger(context, "page")
+                                ))
                         )
                 )
                 .then(Commands.literal("history")
@@ -290,6 +305,67 @@ public final class EconomyCommands {
             shown += entries.size();
         }
         return shown;
+    }
+
+    // ------------------------------------------------------------------ top
+
+    private static int showTop(CommandSourceStack source, int page) {
+        MinecraftServer server = source.getServer();
+        BalanceRanking ranking = BalanceRanking.of(EconomySavedData.get(server).balances());
+        if (ranking.size() == 0) {
+            source.sendSuccess(() -> Component.translatable("command.cobblemon_economy_plus.top_empty"), false);
+            return 0;
+        }
+        if (page > ranking.pageCount()) {
+            source.sendFailure(Component.translatable("command.cobblemon_economy_plus.top_no_page", ranking.pageCount()));
+            return 0;
+        }
+
+        ServerPlayer viewer = source.getPlayer();
+        UUID viewerId = viewer == null ? null : viewer.getUUID();
+        source.sendSuccess(() -> Component.translatable("command.cobblemon_economy_plus.top_header",
+                page, ranking.pageCount(), ranking.size()).withStyle(ChatFormatting.GOLD), false);
+        for (BalanceRanking.Entry entry : ranking.page(page)) {
+            boolean self = entry.playerId().equals(viewerId);
+            Component line = Component.literal(String.format(java.util.Locale.ROOT, "%3d. ", entry.rank()))
+                    .withStyle(self ? ChatFormatting.YELLOW : ChatFormatting.GRAY)
+                    .append(Component.literal(playerName(server, entry.playerId()) + "  ")
+                            .withStyle(self ? ChatFormatting.YELLOW : ChatFormatting.WHITE))
+                    .append(Component.translatable("command.cobblemon_economy_plus.top_amount",
+                            EconomyFormat.money(entry.balance())).withStyle(ChatFormatting.GREEN));
+            source.sendSuccess(() -> line, false);
+        }
+
+        if (viewerId != null) {
+            ranking.find(viewerId).ifPresentOrElse(
+                    entry -> source.sendSuccess(() -> Component.translatable("command.cobblemon_economy_plus.top_own_rank",
+                            entry.rank(), ranking.size(), EconomyFormat.money(entry.balance()))
+                            .withStyle(ChatFormatting.AQUA), false),
+                    () -> source.sendSuccess(() -> Component.translatable("command.cobblemon_economy_plus.top_not_ranked")
+                            .withStyle(ChatFormatting.GRAY), false));
+        }
+        if (page < ranking.pageCount()) {
+            int next = page + 1;
+            source.sendSuccess(() -> Component.translatable("command.cobblemon_economy_plus.top_next_page", "/cep top " + next)
+                    .withStyle(ChatFormatting.DARK_GRAY), false);
+        }
+        return ranking.page(page).size();
+    }
+
+    /** The player's name: online, then the server's name cache (usercache.json), else a shortened UUID. */
+    private static String playerName(MinecraftServer server, UUID playerId) {
+        ServerPlayer online = server.getPlayerList().getPlayer(playerId);
+        if (online != null) {
+            return online.getGameProfile().getName();
+        }
+        GameProfileCache cache = server.getProfileCache();
+        if (cache != null) {
+            java.util.Optional<GameProfile> profile = cache.get(playerId);
+            if (profile.isPresent() && profile.get().getName() != null && !profile.get().getName().isBlank()) {
+                return profile.get().getName();
+            }
+        }
+        return playerId.toString().substring(0, 8) + "…";
     }
 
     // ------------------------------------------------------------------ pay

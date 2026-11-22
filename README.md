@@ -43,6 +43,7 @@ mainly for multiplayer servers.
 | `/cep balance` | Show your own balance | `cobblemon_economy_plus.balance` (everyone) |
 | `/cep balance <player>` | Show someone else's balance | `cobblemon_economy_plus.balance.others` (OP 2) |
 | `/cep pay <player> <amount>`, `/pay <player> <amount>` | Pay another player | `cobblemon_economy_plus.pay` (everyone) |
+| `/cep top [page]` | Balance ranking, 10 players per page, with your own rank (offline players included) | `cobblemon_economy_plus.top` (everyone) |
 | `/cep money get <player>` | Show a balance | `cobblemon_economy_plus.money` (OP 2) |
 | `/cep money set <players> <amount>` | Set balances | same |
 | `/cep money add <players> <amount>` | Add coins | same |

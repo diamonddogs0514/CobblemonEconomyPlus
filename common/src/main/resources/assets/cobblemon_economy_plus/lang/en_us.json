@@ -119,5 +119,12 @@
   "message.cobblemon_economy_plus.reward.capture": "+%s coins (capture)",
   "message.cobblemon_economy_plus.reward.capture_alpha": "+%s coins (alpha Pokémon caught)",
   "message.cobblemon_economy_plus.reward.pokedex_milestone": "Pokédex milestone! You have caught %s species. +%s coins",
-  "message.cobblemon_economy_plus.reward.daily_cap": "You have reached today's reward limit."
+  "message.cobblemon_economy_plus.reward.daily_cap": "You have reached today's reward limit.",
+  "command.cobblemon_economy_plus.top_header": "Richest players (page %s / %s, %s players)",
+  "command.cobblemon_economy_plus.top_amount": "%s coins",
+  "command.cobblemon_economy_plus.top_own_rank": "Your rank: #%s of %s (%s coins)",
+  "command.cobblemon_economy_plus.top_not_ranked": "You are not ranked yet (players with 0 coins are not listed).",
+  "command.cobblemon_economy_plus.top_next_page": "Next page: %s",
+  "command.cobblemon_economy_plus.top_empty": "Nobody has any coins yet.",
+  "command.cobblemon_economy_plus.top_no_page": "That page does not exist. Pages: 1-%s."
 }

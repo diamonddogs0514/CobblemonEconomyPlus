@@ -16,6 +16,8 @@
   switched off, amounts are `base + level × per_level`, and an optional `daily_cap` limits battle and capture rewards per
   day. PvP battles pay nothing, and NPCs tagged `cep_no_reward` pay no trainer reward. Reward bookkeeping is saved in
   `data/cobblemon_economy_plus_rewards.dat`.
+- `/cep top [page]`: balance ranking (10 players per page, ties share a rank, offline players shown by name) with the
+  viewer's own rank. Permission node `cobblemon_economy_plus.top` (everyone by default).
 
 ### Changed
 - `/cep shop reload` reports problems in chat (up to 5, the rest in the server log) and how many item values were loaded.

@@ -14,6 +14,8 @@ public enum EconomyPermission {
     BALANCE_OTHERS("balance.others", 2),
     /** {@code /cep pay} and {@code /pay}. */
     PAY("pay", 0),
+    /** {@code /cep top} (balance ranking). */
+    TOP("top", 0),
     /** {@code /cep money get|set|add|take}. */
     MONEY("money", 2),
     /** {@code /cep shop reload|list}. */

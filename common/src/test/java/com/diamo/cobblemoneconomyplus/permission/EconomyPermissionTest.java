@@ -21,6 +21,7 @@ class EconomyPermissionTest {
     void playerFacingNodesDefaultToEveryoneAndAdminNodesToOps() {
         assertEquals(0, EconomyPermission.BALANCE.defaultLevel());
         assertEquals(0, EconomyPermission.PAY.defaultLevel());
+        assertEquals(0, EconomyPermission.TOP.defaultLevel());
         assertEquals(2, EconomyPermission.BALANCE_OTHERS.defaultLevel());
         assertEquals(2, EconomyPermission.MONEY.defaultLevel());
         assertEquals(2, EconomyPermission.SHOP.defaultLevel());
@@ -36,6 +37,7 @@ class EconomyPermissionTest {
         assertEquals("cobblemon_economy_plus.balance", EconomyPermission.BALANCE.fullNode());
         assertEquals("cobblemon_economy_plus.balance.others", EconomyPermission.BALANCE_OTHERS.fullNode());
         assertEquals("cobblemon_economy_plus.pay", EconomyPermission.PAY.fullNode());
+        assertEquals("cobblemon_economy_plus.top", EconomyPermission.TOP.fullNode());
         assertEquals("cobblemon_economy_plus.money", EconomyPermission.MONEY.fullNode());
         assertEquals("cobblemon_economy_plus.shop", EconomyPermission.SHOP.fullNode());
         assertEquals("cobblemon_economy_plus.shopkeeper", EconomyPermission.SHOPKEEPER.fullNode());
