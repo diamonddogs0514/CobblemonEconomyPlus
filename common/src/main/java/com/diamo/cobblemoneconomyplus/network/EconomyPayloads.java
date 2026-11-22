@@ -204,6 +204,154 @@ public final class EconomyPayloads {
         }
     }
 
+    // ------------------------------------------------------------------ admin screen (1.1+)
+
+    /** Longest shops / item values JSON sent to the admin screen (characters). */
+    public static final int MAX_ADMIN_JSON = 262_144;
+    /** Longest single shop the admin screen may send back. Client-to-server packets are limited to 32 KiB. */
+    public static final int MAX_ADMIN_SHOP_JSON = 30_000;
+    private static final int MAX_STATUS_ARGS = 4;
+    private static final int MAX_STATUS_ARG_LENGTH = 256;
+
+    /**
+     * Opens (or refreshes) the admin screen with every shop and item value, in the file layout of shops.json and
+     * item_values.json. {@code revision} must be sent back with each edit; it changes whenever the shops reload.
+     * {@code focusShopId} selects a shop (empty = keep the current selection).
+     */
+    public record AdminOpenPayload(int revision, String focusShopId, String shopsJson, String itemValuesJson)
+            implements CustomPacketPayload {
+        public static final Type<AdminOpenPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(
+                CobblemonEconomyPlus.MOD_ID, "admin_open"
+        ));
+        public static final StreamCodec<RegistryFriendlyByteBuf, AdminOpenPayload> STREAM_CODEC = StreamCodec.of(
+                (buffer, payload) -> {
+                    buffer.writeVarInt(payload.revision);
+                    buffer.writeUtf(payload.focusShopId, MAX_SHOP_ID_LENGTH);
+                    buffer.writeUtf(payload.shopsJson, MAX_ADMIN_JSON);
+                    buffer.writeUtf(payload.itemValuesJson, MAX_ADMIN_JSON);
+                },
+                buffer -> new AdminOpenPayload(
+                        buffer.readVarInt(),
+                        buffer.readUtf(MAX_SHOP_ID_LENGTH),
+                        buffer.readUtf(MAX_ADMIN_JSON),
+                        buffer.readUtf(MAX_ADMIN_JSON)
+                )
+        );
+
+        @Override
+        public Type<AdminOpenPayload> type() {
+            return TYPE;
+        }
+    }
+
+    /** The outcome of an admin edit, shown in the admin screen: a translation key and its arguments. */
+    public record AdminStatusPayload(boolean success, String key, List<String> args) implements CustomPacketPayload {
+        public static final Type<AdminStatusPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(
+                CobblemonEconomyPlus.MOD_ID, "admin_status"
+        ));
+        public static final StreamCodec<RegistryFriendlyByteBuf, AdminStatusPayload> STREAM_CODEC = StreamCodec.of(
+                (buffer, payload) -> {
+                    buffer.writeBoolean(payload.success);
+                    buffer.writeUtf(payload.key, MAX_NAME_LENGTH);
+                    buffer.writeVarInt(payload.args.size());
+                    for (String arg : payload.args) {
+                        buffer.writeUtf(arg, MAX_STATUS_ARG_LENGTH);
+                    }
+                },
+                buffer -> {
+                    boolean success = buffer.readBoolean();
+                    String key = buffer.readUtf(MAX_NAME_LENGTH);
+                    int size = buffer.readVarInt();
+                    if (size < 0 || size > MAX_STATUS_ARGS) {
+                        throw new IllegalArgumentException("Invalid status argument count: " + size);
+                    }
+                    List<String> args = new ArrayList<>(size);
+                    for (int index = 0; index < size; index++) {
+                        args.add(buffer.readUtf(MAX_STATUS_ARG_LENGTH));
+                    }
+                    return new AdminStatusPayload(success, key, args);
+                }
+        );
+
+        public AdminStatusPayload {
+            args = args.stream().limit(MAX_STATUS_ARGS)
+                    .map(arg -> arg.length() > MAX_STATUS_ARG_LENGTH ? arg.substring(0, MAX_STATUS_ARG_LENGTH) : arg)
+                    .toList();
+        }
+
+        @Override
+        public Type<AdminStatusPayload> type() {
+            return TYPE;
+        }
+    }
+
+    /**
+     * Saves one shop from the admin screen. {@code originalId} is the shop being edited, or empty for a new shop;
+     * {@code shopJson} is the shop object in the shops.json layout.
+     */
+    public record AdminSaveShopPayload(int revision, String originalId, String shopJson) implements CustomPacketPayload {
+        public static final Type<AdminSaveShopPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(
+                CobblemonEconomyPlus.MOD_ID, "admin_save_shop"
+        ));
+        public static final StreamCodec<RegistryFriendlyByteBuf, AdminSaveShopPayload> STREAM_CODEC = StreamCodec.of(
+                (buffer, payload) -> {
+                    buffer.writeVarInt(payload.revision);
+                    buffer.writeUtf(payload.originalId, MAX_SHOP_ID_LENGTH);
+                    buffer.writeUtf(payload.shopJson, MAX_ADMIN_SHOP_JSON);
+                },
+                buffer -> new AdminSaveShopPayload(
+                        buffer.readVarInt(),
+                        buffer.readUtf(MAX_SHOP_ID_LENGTH),
+                        buffer.readUtf(MAX_ADMIN_SHOP_JSON)
+                )
+        );
+
+        @Override
+        public Type<AdminSaveShopPayload> type() {
+            return TYPE;
+        }
+    }
+
+    /** Deletes a shop from the admin screen. */
+    public record AdminDeleteShopPayload(int revision, String shopId) implements CustomPacketPayload {
+        public static final Type<AdminDeleteShopPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(
+                CobblemonEconomyPlus.MOD_ID, "admin_delete_shop"
+        ));
+        public static final StreamCodec<RegistryFriendlyByteBuf, AdminDeleteShopPayload> STREAM_CODEC = StreamCodec.of(
+                (buffer, payload) -> {
+                    buffer.writeVarInt(payload.revision);
+                    buffer.writeUtf(payload.shopId, MAX_SHOP_ID_LENGTH);
+                },
+                buffer -> new AdminDeleteShopPayload(buffer.readVarInt(), buffer.readUtf(MAX_SHOP_ID_LENGTH))
+        );
+
+        @Override
+        public Type<AdminDeleteShopPayload> type() {
+            return TYPE;
+        }
+    }
+
+    /** Sets an item's base value from the admin screen; {@code value} 0 removes it (the item can no longer be sold). */
+    public record AdminItemValuePayload(int revision, String itemId, long value) implements CustomPacketPayload {
+        public static final Type<AdminItemValuePayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(
+                CobblemonEconomyPlus.MOD_ID, "admin_item_value"
+        ));
+        public static final StreamCodec<RegistryFriendlyByteBuf, AdminItemValuePayload> STREAM_CODEC = StreamCodec.of(
+                (buffer, payload) -> {
+                    buffer.writeVarInt(payload.revision);
+                    buffer.writeUtf(payload.itemId, MAX_ITEM_ID_LENGTH);
+                    buffer.writeVarLong(payload.value);
+                },
+                buffer -> new AdminItemValuePayload(buffer.readVarInt(), buffer.readUtf(MAX_ITEM_ID_LENGTH),
+                        buffer.readVarLong())
+        );
+
+        @Override
+        public Type<AdminItemValuePayload> type() {
+            return TYPE;
+        }
+    }
+
     private static void writeOpenShop(RegistryFriendlyByteBuf buffer, OpenShopPayload payload) {
         buffer.writeUtf(payload.shopId, MAX_SHOP_ID_LENGTH);
         buffer.writeUtf(payload.shopName, MAX_NAME_LENGTH);

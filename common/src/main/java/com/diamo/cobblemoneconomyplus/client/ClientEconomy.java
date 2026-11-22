@@ -47,6 +47,25 @@ public final class ClientEconomy {
         }
     }
 
+    /** Opens the admin screen, or refreshes it in place when it is already open. */
+    public static void handleAdminOpen(EconomyPayloads.AdminOpenPayload payload) {
+        if (Minecraft.getInstance().screen instanceof AdminScreen screen) {
+            screen.apply(payload);
+        } else {
+            Minecraft.getInstance().setScreen(new AdminScreen(payload));
+        }
+    }
+
+    /** Shows the result of an admin edit in the admin screen, or in chat when the screen was closed. */
+    public static void handleAdminStatus(EconomyPayloads.AdminStatusPayload payload) {
+        if (Minecraft.getInstance().screen instanceof AdminScreen screen) {
+            screen.showStatus(payload);
+        } else if (Minecraft.getInstance().player != null) {
+            Minecraft.getInstance().player.displayClientMessage(
+                    net.minecraft.network.chat.Component.translatable(payload.key(), payload.args().toArray()), false);
+        }
+    }
+
     public static void handleOpenShop(EconomyPayloads.OpenShopPayload payload) {
         applyBalance(payload.balance());
         // Names/subtitles may be per-language objects; pick the viewer's language once, here.

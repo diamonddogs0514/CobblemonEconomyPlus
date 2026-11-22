@@ -1,5 +1,6 @@
 package com.diamo.cobblemoneconomyplus.content;
 
+import com.diamo.cobblemoneconomyplus.admin.AdminService;
 import com.diamo.cobblemoneconomyplus.permission.EconomyPermission;
 import com.diamo.cobblemoneconomyplus.permission.EconomyPermissions;
 import com.diamo.cobblemoneconomyplus.shop.LocalizedText;
@@ -29,12 +30,36 @@ import java.util.UUID;
 /**
  * Operator tool for configuring a shopkeeper NPC.
  *
- * <p>Two modes, toggled by right-clicking in the air: <b>Shop</b> mode (default) cycles which shop the NPC
- * sells, <b>Theme</b> mode cycles the shop GUI's look. Right-click an NPC to go forward, Shift + right-click
- * to go back. Shift + left-click a shopkeeper twice removes it.</p>
+ * <p>Three modes, cycled by right-clicking in the air: <b>Shop</b> mode (default) cycles which shop the NPC
+ * sells, <b>Theme</b> mode cycles the shop GUI's look (right-click an NPC to go forward, Shift + right-click to go
+ * back), and <b>Admin</b> mode opens the admin screen: on the NPC's shop when an NPC is right-clicked, or with
+ * Shift + right-click in the air. Shift + left-click a shopkeeper twice removes it.</p>
  */
 public final class ShopEditorItem extends Item {
+    /** Before 1.1 the mode was a boolean; it is still read so existing editors keep their mode. */
     private static final String THEME_MODE_KEY = "theme_mode";
+    private static final String MODE_KEY = "mode";
+
+    /** What right-clicking an NPC does. */
+    public enum Mode {
+        SHOP("item.cobblemon_economy_plus.shop_editor.mode_shop"),
+        THEME("item.cobblemon_economy_plus.shop_editor.mode_theme"),
+        ADMIN("item.cobblemon_economy_plus.shop_editor.mode_admin");
+
+        private final String translationKey;
+
+        Mode(String translationKey) {
+            this.translationKey = translationKey;
+        }
+
+        public Component displayName() {
+            return Component.translatable(translationKey);
+        }
+
+        Mode next() {
+            return values()[(ordinal() + 1) % values().length];
+        }
+    }
     /** How long a Shift + left-click stays armed before the second click must be repeated (5 seconds). */
     private static final long REMOVE_CONFIRM_TICKS = 100;
     private static final Map<UUID, PendingRemoval> PENDING_REMOVALS = new HashMap<>();
@@ -56,19 +81,31 @@ public final class ShopEditorItem extends Item {
                 .withStyle(ChatFormatting.DARK_GRAY));
         tooltip.add(Component.translatable("item.cobblemon_economy_plus.shop_editor.remove_tooltip")
                 .withStyle(ChatFormatting.DARK_GRAY));
+        tooltip.add(Component.translatable("item.cobblemon_economy_plus.shop_editor.admin_tooltip")
+                .withStyle(ChatFormatting.DARK_GRAY));
         tooltip.add(Component.translatable("item.cobblemon_economy_plus.shop_editor.current_mode",
-                modeName(isThemeMode(stack))).withStyle(ChatFormatting.YELLOW));
+                mode(stack).displayName()).withStyle(ChatFormatting.YELLOW));
     }
 
-    /** Right-click in the air (or on a block): switch between Shop mode and Theme mode. */
+    /**
+     * Right-click in the air (or on a block): next mode. In Admin mode, Shift + right-click opens the admin screen
+     * instead.
+     */
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
-        if (!level.isClientSide) {
-            boolean themeMode = !isThemeMode(stack);
-            CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> tag.putBoolean(THEME_MODE_KEY, themeMode));
+        if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
+            if (mode(stack) == Mode.ADMIN && player.isShiftKeyDown()) {
+                AdminService.open(serverPlayer, "");
+                return InteractionResultHolder.sidedSuccess(stack, false);
+            }
+            Mode next = mode(stack).next();
+            CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> {
+                tag.remove(THEME_MODE_KEY);
+                tag.putString(MODE_KEY, next.name());
+            });
             player.displayClientMessage(Component.translatable("message.cobblemon_economy_plus.editor_mode",
-                    modeName(themeMode)), true);
+                    next.displayName()), true);
         }
         return InteractionResultHolder.sidedSuccess(stack, level.isClientSide);
     }
@@ -77,14 +114,16 @@ public final class ShopEditorItem extends Item {
         return stack.getItem() instanceof ShopEditorItem;
     }
 
-    private static boolean isThemeMode(ItemStack stack) {
-        return stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getBoolean(THEME_MODE_KEY);
-    }
-
-    private static Component modeName(boolean themeMode) {
-        return Component.translatable(themeMode
-                ? "item.cobblemon_economy_plus.shop_editor.mode_theme"
-                : "item.cobblemon_economy_plus.shop_editor.mode_shop");
+    public static Mode mode(ItemStack stack) {
+        net.minecraft.nbt.CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        if (tag.contains(MODE_KEY)) {
+            try {
+                return Mode.valueOf(tag.getString(MODE_KEY));
+            } catch (IllegalArgumentException ignored) {
+                return Mode.SHOP;
+            }
+        }
+        return tag.getBoolean(THEME_MODE_KEY) ? Mode.THEME : Mode.SHOP;
     }
 
     /**
@@ -133,6 +172,10 @@ public final class ShopEditorItem extends Item {
         if (!isEditor(player.getMainHandItem())) {
             return false;
         }
+        if (mode(player.getMainHandItem()) == Mode.ADMIN) {
+            AdminService.open(player, Shopkeeper.shopId(target).orElse(""));
+            return true;
+        }
         if (!EconomyPermissions.has(player, EconomyPermission.EDITOR)) {
             player.displayClientMessage(Component.translatable("message.cobblemon_economy_plus.editor_no_permission"), true);
             return true;
@@ -143,7 +186,7 @@ public final class ShopEditorItem extends Item {
         }
 
         int direction = player.isShiftKeyDown() ? -1 : 1;
-        if (isThemeMode(player.getMainHandItem())) {
+        if (mode(player.getMainHandItem()) == Mode.THEME) {
             return editTheme(player, target, direction);
         }
         return editShop(player, target, direction);

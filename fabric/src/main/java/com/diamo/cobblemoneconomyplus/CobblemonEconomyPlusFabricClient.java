@@ -16,9 +16,11 @@ public final class CobblemonEconomyPlusFabricClient implements ClientModInitiali
     public void onInitializeClient() {
         PlatformNetworking.setShopActionSender(ClientPlayNetworking::send);
         PlatformNetworking.setSellActionSender(ClientPlayNetworking::send);
+        PlatformNetworking.setClientSender(ClientPlayNetworking::send);
         ClientPayloadBridge.setBalanceHandler(ClientEconomy::handleBalance);
         ClientPayloadBridge.setOpenShopHandler(ClientEconomy::handleOpenShop);
         ClientPayloadBridge.setEntryUpdateHandler(ClientEconomy::handleEntryUpdate);
+        ClientPayloadBridge.setAdminHandlers(ClientEconomy::handleAdminOpen, ClientEconomy::handleAdminStatus);
         ClientPayloadBridge.setOpenCardHandler(ClientEconomy::openTrainerCard);
         KeyBindingHelper.registerKeyBinding(HudKeys.SHOW_BALANCE);
 
@@ -30,6 +32,12 @@ public final class CobblemonEconomyPlusFabricClient implements ClientModInitiali
         );
         ClientPlayNetworking.registerGlobalReceiver(EconomyPayloads.ShopEntryUpdatePayload.TYPE, (payload, context) ->
                 context.client().execute(() -> ClientPayloadBridge.handleEntryUpdate(payload))
+        );
+        ClientPlayNetworking.registerGlobalReceiver(EconomyPayloads.AdminOpenPayload.TYPE, (payload, context) ->
+                context.client().execute(() -> ClientPayloadBridge.handleAdminOpen(payload))
+        );
+        ClientPlayNetworking.registerGlobalReceiver(EconomyPayloads.AdminStatusPayload.TYPE, (payload, context) ->
+                context.client().execute(() -> ClientPayloadBridge.handleAdminStatus(payload))
         );
         HudRenderCallback.EVENT.register((graphics, deltaTracker) -> CurrencyHud.render(graphics));
     }

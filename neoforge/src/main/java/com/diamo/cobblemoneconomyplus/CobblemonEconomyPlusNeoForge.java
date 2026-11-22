@@ -1,5 +1,6 @@
 package com.diamo.cobblemoneconomyplus;
 
+import com.diamo.cobblemoneconomyplus.admin.AdminService;
 import com.diamo.cobblemoneconomyplus.command.EconomyCommands;
 import com.diamo.cobblemoneconomyplus.content.ShopEditorItem;
 import com.diamo.cobblemoneconomyplus.network.EconomyPayloads;
@@ -52,6 +53,33 @@ public final class CobblemonEconomyPlusNeoForge {
         );
         registrar.playToClient(EconomyPayloads.OpenShopPayload.TYPE, EconomyPayloads.OpenShopPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() -> ClientPayloadBridge.handleOpenShop(payload))
+        );
+        registrar.playToClient(EconomyPayloads.AdminOpenPayload.TYPE, EconomyPayloads.AdminOpenPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> ClientPayloadBridge.handleAdminOpen(payload))
+        );
+        registrar.playToClient(EconomyPayloads.AdminStatusPayload.TYPE, EconomyPayloads.AdminStatusPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> ClientPayloadBridge.handleAdminStatus(payload))
+        );
+        registrar.playToServer(EconomyPayloads.AdminSaveShopPayload.TYPE, EconomyPayloads.AdminSaveShopPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> {
+                    if (context.player() instanceof ServerPlayer player) {
+                        AdminService.saveShop(player, payload);
+                    }
+                })
+        );
+        registrar.playToServer(EconomyPayloads.AdminDeleteShopPayload.TYPE, EconomyPayloads.AdminDeleteShopPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> {
+                    if (context.player() instanceof ServerPlayer player) {
+                        AdminService.deleteShop(player, payload);
+                    }
+                })
+        );
+        registrar.playToServer(EconomyPayloads.AdminItemValuePayload.TYPE, EconomyPayloads.AdminItemValuePayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> {
+                    if (context.player() instanceof ServerPlayer player) {
+                        AdminService.setItemValue(player, payload);
+                    }
+                })
         );
         registrar.playToClient(EconomyPayloads.ShopEntryUpdatePayload.TYPE, EconomyPayloads.ShopEntryUpdatePayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() -> ClientPayloadBridge.handleEntryUpdate(payload))

@@ -13,6 +13,8 @@ public final class ClientPayloadBridge {
     private static Consumer<EconomyPayloads.BalancePayload> balanceHandler;
     private static Consumer<EconomyPayloads.OpenShopPayload> openShopHandler;
     private static Consumer<EconomyPayloads.ShopEntryUpdatePayload> entryUpdateHandler;
+    private static Consumer<EconomyPayloads.AdminOpenPayload> adminOpenHandler;
+    private static Consumer<EconomyPayloads.AdminStatusPayload> adminStatusHandler;
 
     private static Runnable openCardHandler;
 
@@ -35,6 +37,24 @@ public final class ClientPayloadBridge {
 
     public static void setOpenShopHandler(Consumer<EconomyPayloads.OpenShopPayload> handler) {
         openShopHandler = Objects.requireNonNull(handler, "handler");
+    }
+
+    public static void setAdminHandlers(Consumer<EconomyPayloads.AdminOpenPayload> open,
+                                        Consumer<EconomyPayloads.AdminStatusPayload> status) {
+        adminOpenHandler = Objects.requireNonNull(open, "open");
+        adminStatusHandler = Objects.requireNonNull(status, "status");
+    }
+
+    public static void handleAdminOpen(EconomyPayloads.AdminOpenPayload payload) {
+        if (adminOpenHandler != null) {
+            adminOpenHandler.accept(payload);
+        }
+    }
+
+    public static void handleAdminStatus(EconomyPayloads.AdminStatusPayload payload) {
+        if (adminStatusHandler != null) {
+            adminStatusHandler.accept(payload);
+        }
     }
 
     public static void setEntryUpdateHandler(Consumer<EconomyPayloads.ShopEntryUpdatePayload> handler) {

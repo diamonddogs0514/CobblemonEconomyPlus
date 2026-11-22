@@ -24,6 +24,11 @@
   `data/cobblemon_economy_plus_purchases.dat`.
 - `config/cobblemon_economy_plus/config.json` with `purchase_limits_enabled` to switch all limits off.
 - `/cep shop restock` (refill every stock) and `/cep shop limits reset <player>` (clear a player's purchase counts).
+- In-game admin screen (`/cep admin [shop]`, or the Shop Editor's new *Admin* mode): create, edit and delete shops
+  (id, theme, buy-back multiplier, English / Japanese name and subtitle), their items (price, quantity, purchase limit,
+  stock; add the held item, reorder) and sell values. Changes are validated on the server like the files, written with
+  a `.bak` backup, reloaded at once and logged to `logs/cobblemon_economy_plus/admin.log`; saves made on outdated data
+  are refused. New permission node `cobblemon_economy_plus.admin` (OP 2).
 
 ### Changed
 - `/cep shop reload` reports problems in chat (up to 5, the rest in the server log) and how many item values were loaded.

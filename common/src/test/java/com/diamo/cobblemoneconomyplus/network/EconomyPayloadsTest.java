@@ -71,6 +71,20 @@ class EconomyPayloadsTest {
     }
 
     @Test
+    void adminPayloadsRoundTrip() {
+        var open = new EconomyPayloads.AdminOpenPayload(7, "general", "{\"shops\":[]}", "{\"values\":{}}");
+        assertEquals(open, roundTrip(EconomyPayloads.AdminOpenPayload.STREAM_CODEC, open));
+        var status = new EconomyPayloads.AdminStatusPayload(false, "message.x", List.of("a", "b"));
+        assertEquals(status, roundTrip(EconomyPayloads.AdminStatusPayload.STREAM_CODEC, status));
+        var save = new EconomyPayloads.AdminSaveShopPayload(7, "", "{\"id\":\"new\"}");
+        assertEquals(save, roundTrip(EconomyPayloads.AdminSaveShopPayload.STREAM_CODEC, save));
+        var delete = new EconomyPayloads.AdminDeleteShopPayload(7, "tools");
+        assertEquals(delete, roundTrip(EconomyPayloads.AdminDeleteShopPayload.STREAM_CODEC, delete));
+        var value = new EconomyPayloads.AdminItemValuePayload(7, "minecraft:diamond", 0L);
+        assertEquals(value, roundTrip(EconomyPayloads.AdminItemValuePayload.STREAM_CODEC, value));
+    }
+
+    @Test
     void openShopWithNoEntriesRoundTrips() {
         EconomyPayloads.OpenShopPayload payload = new EconomyPayloads.OpenShopPayload(
                 "empty", "Empty", "pokeball", "", 0L, List.of(), List.of());

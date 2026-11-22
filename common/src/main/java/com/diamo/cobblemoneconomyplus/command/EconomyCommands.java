@@ -1,5 +1,6 @@
 package com.diamo.cobblemoneconomyplus.command;
 
+import com.diamo.cobblemoneconomyplus.admin.AdminService;
 import com.diamo.cobblemoneconomyplus.api.CobblemonEconomyApi;
 import com.diamo.cobblemoneconomyplus.config.ConfigResult;
 import com.diamo.cobblemoneconomyplus.config.ModConfig;
@@ -118,6 +119,14 @@ public final class EconomyCommands {
                                         context.getSource(),
                                         IntegerArgumentType.getInteger(context, "page")
                                 ))
+                        )
+                )
+                .then(Commands.literal("admin")
+                        .requires(source -> EconomyPermissions.has(source, EconomyPermission.ADMIN))
+                        .executes(context -> openAdmin(context.getSource(), ""))
+                        .then(Commands.argument("shop", StringArgumentType.word())
+                                .executes(context -> openAdmin(context.getSource(),
+                                        StringArgumentType.getString(context, "shop")))
                         )
                 )
                 .then(Commands.literal("history")
@@ -321,6 +330,11 @@ public final class EconomyCommands {
             shown += entries.size();
         }
         return shown;
+    }
+
+    private static int openAdmin(CommandSourceStack source, String shopId) throws CommandSyntaxException {
+        AdminService.open(source.getPlayerOrException(), shopId.toLowerCase(java.util.Locale.ROOT));
+        return 1;
     }
 
     // ------------------------------------------------------------------ top

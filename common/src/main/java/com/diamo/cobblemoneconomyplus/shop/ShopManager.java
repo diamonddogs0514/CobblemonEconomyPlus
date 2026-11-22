@@ -131,6 +131,8 @@ public final class ShopManager {
     private static MinecraftServer loadedFor;
     private static Map<String, ShopDefinition> shops = Map.of();
     private static Map<ResourceLocation, Long> itemValues = Map.of();
+    /** Goes up on every reload, so the admin screen can tell that the shops changed since it was opened. */
+    private static int revision;
 
     /** One item a shop will buy from players, at {@code unitPrice} per item. */
     public record SellOffer(ResourceLocation itemId, long unitPrice) {
@@ -220,6 +222,7 @@ public final class ShopManager {
         }
         itemValues = Collections.unmodifiableMap(choose(parsedValues, itemValues, firstLoad,
                 () -> parseItemValues(DEFAULT_ITEM_VALUES)));
+        revision++;
         loadedFor = server;
         warnings.addAll(arbitrageWarnings(shops, itemValues));
 
@@ -437,6 +440,18 @@ public final class ShopManager {
             }
         }
         return warnings;
+    }
+
+    /** Changes whenever the shops or item values are reloaded (see {@link #reload}). */
+    public static synchronized int revision(MinecraftServer server) {
+        ensureLoaded(server);
+        return revision;
+    }
+
+    /** The base values of sellable items currently in effect. */
+    public static Map<ResourceLocation, Long> itemValues(MinecraftServer server) {
+        ensureLoaded(server);
+        return itemValues;
     }
 
     public static Path configPath(MinecraftServer server) {

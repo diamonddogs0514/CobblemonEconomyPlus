@@ -42,6 +42,31 @@ public final class PlatformNetworking {
         }
     }
 
+    private static Consumer<CustomPacketPayload> clientSender;
+
+    /** Sends any client-to-server payload (set by the client entry points). */
+    public static void setClientSender(Consumer<CustomPacketPayload> sender) {
+        clientSender = Objects.requireNonNull(sender, "sender");
+    }
+
+    public static void sendAdminSaveShop(EconomyPayloads.AdminSaveShopPayload payload) {
+        sendToServer(payload);
+    }
+
+    public static void sendAdminDeleteShop(EconomyPayloads.AdminDeleteShopPayload payload) {
+        sendToServer(payload);
+    }
+
+    public static void sendAdminItemValue(EconomyPayloads.AdminItemValuePayload payload) {
+        sendToServer(payload);
+    }
+
+    private static void sendToServer(CustomPacketPayload payload) {
+        if (clientSender != null) {
+            clientSender.accept(payload);
+        }
+    }
+
     public static void sendShopAction(EconomyPayloads.ShopActionPayload payload) {
         if (shopActionSender != null) {
             shopActionSender.accept(payload);

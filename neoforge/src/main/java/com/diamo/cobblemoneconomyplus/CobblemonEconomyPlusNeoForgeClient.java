@@ -32,9 +32,11 @@ public final class CobblemonEconomyPlusNeoForgeClient {
             event.enqueueWork(() -> {
                 PlatformNetworking.setShopActionSender(PacketDistributor::sendToServer);
                 PlatformNetworking.setSellActionSender(PacketDistributor::sendToServer);
+                PlatformNetworking.setClientSender(payload -> PacketDistributor.sendToServer(payload));
                 ClientPayloadBridge.setBalanceHandler(ClientEconomy::handleBalance);
                 ClientPayloadBridge.setOpenShopHandler(ClientEconomy::handleOpenShop);
                 ClientPayloadBridge.setEntryUpdateHandler(ClientEconomy::handleEntryUpdate);
+                ClientPayloadBridge.setAdminHandlers(ClientEconomy::handleAdminOpen, ClientEconomy::handleAdminStatus);
                 ClientPayloadBridge.setOpenCardHandler(ClientEconomy::openTrainerCard);
             });
         }

@@ -54,6 +54,7 @@ mainly for multiplayer servers.
 | `/cep shop restock` / `/cep shop limits reset <player>` | Refill every stock / clear a player's purchase counts | same |
 | `/cep shopkeeper set <npc> <shop_id>` / `clear <npc>` | Link / unlink an NPC to a shop | `cobblemon_economy_plus.shopkeeper` (OP 2) |
 | `/cep shopkeeper remove <npcs>` | Delete shopkeeper NPCs (other entities in the selection are skipped) | `cobblemon_economy_plus.shopkeeper.remove` (OP 2) |
+| `/cep admin [shop]` | Open the in-game admin screen (shops, items, limits, sell values) | `cobblemon_economy_plus.admin` (OP 2) |
 
 - Player arguments are **player names (offline players work too)**; selectors such as `@a` match online players.
 - Using the Shop Editor item requires `cobblemon_economy_plus.editor` (OP 2). Removing shopkeepers with it
@@ -182,12 +183,39 @@ the hotbar (action bar) and logged with a reason such as `reward:wild_battle`.
 - If your server has NPCs that can be battled again and again, use `daily_cap` or `cep_no_reward` to prevent farming.
 - Other mods can cancel a reward or change its amount before it is paid (see *Events* below).
 
+### Admin screen (1.1.0+)
+
+Edit shops and sell values in game instead of editing the JSON files. Open it with `/cep admin [shop]`, or put the
+**Shop Editor** in *Admin* mode (right-click in the air to cycle modes) and right-click a shopkeeper (opens its shop)
+or Shift + right-click in the air. Requires `cobblemon_economy_plus.admin` (OP 2).
+
+- **Shops tab:** pick a shop on the left, or create one. Edit the id (new shops only), theme, buy-back multiplier,
+  English / Japanese name and subtitle, and the items: price, quantity, purchase limit (count + daily / weekly / once)
+  and stock (count + restock minutes). *Add held item* adds what you hold; ↑ ↓ reorder; *Save* applies the shop.
+- **Sell values tab:** search the item values, pick one (or the held item) and set or remove its value.
+- **Restock** and **Reset limits** (with a player name) run `/cep shop restock` and `/cep shop limits reset`.
+- Destructive buttons (delete, restock, reset, discard changes) need a second press within 3 seconds.
+
+How saving works:
+- The server checks every change with the same rules as the files and refuses anything the file loader would skip or
+  change (unknown item, bad number, unknown theme ...).
+- The file is rewritten with the edited shop only; other shops stay as they are, including ones the loader skipped.
+  The previous file is kept as `shops.json.bak` / `item_values.json.bak`, and the file is reloaded right away.
+  Saved files are re-formatted (indentation, key order); the content, including per-language names, is kept.
+- If someone else changed the shops after you opened the screen, your save is refused, the latest shops are loaded
+  and your edits stay on screen so you can check them and save again.
+- Open shop screens are refreshed. Every edit is logged to `logs/cobblemon_economy_plus/admin.log`
+  (time / admin / UUID / action / detail).
+- Shop ids cannot be renamed (shopkeepers are linked by id). NPCs linked to a deleted shop show "shop not found" until
+  they are given another shop.
+
 ### Themes
 
 `pokeball`, `greatball`, `ultraball`, `masterball`, `tm`, `berry`, `stone`, `wood`, `dirt`, `ore`, `iron`
 
 A theme can also be overridden per NPC with the **Shop Editor** (creative tab): right-click in the air to switch
-between *Change shop* and *Change theme* mode, then right-click an NPC for the next option, Shift + right-click for the previous.
+between *Change shop*, *Change theme* and *Admin* mode, then right-click an NPC for the next option, Shift + right-click for the previous
+(in *Admin* mode, right-clicking an NPC opens the admin screen on its shop).
 
 ### Shopkeepers
 

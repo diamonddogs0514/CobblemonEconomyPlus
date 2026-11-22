@@ -53,6 +53,27 @@ public final class ShopService {
         return true;
     }
 
+    /**
+     * Re-sends every open shop screen after the shops changed (admin edit or reload), so players see the new
+     * entries and prices. Sessions whose shop or shopkeeper is gone are closed.
+     */
+    public static void refreshOpenShops(net.minecraft.server.MinecraftServer server) {
+        for (Map.Entry<UUID, ShopSession> open : List.copyOf(sessions.entrySet())) {
+            ServerPlayer player = server.getPlayerList().getPlayer(open.getKey());
+            if (player == null) {
+                sessions.remove(open.getKey());
+                continue;
+            }
+            ShopDefinition shop = ShopManager.get(server, open.getValue().shopId).orElse(null);
+            Entity shopkeeper = player.serverLevel().getEntity(open.getValue().shopkeeperId);
+            if (shop == null || shopkeeper == null) {
+                sessions.remove(open.getKey());
+                continue;
+            }
+            sendShop(player, shop, shopkeeper);
+        }
+    }
+
     /** Forgets a player's open shop (call on disconnect). */
     public static void onDisconnect(UUID playerId) {
         sessions.remove(playerId);

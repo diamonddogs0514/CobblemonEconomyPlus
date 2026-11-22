@@ -26,6 +26,8 @@ public enum EconomyPermission {
     SHOPKEEPER_REMOVE("shopkeeper.remove", 2),
     /** {@code /cep history}. */
     HISTORY("history", 2),
+    /** The in-game admin screen ({@code /cep admin} and the Shop Editor's admin mode): edit shops and item values. */
+    ADMIN("admin", 2),
     /** Using the Shop Editor item on NPCs. */
     EDITOR("editor", 2);
 

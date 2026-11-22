@@ -12,6 +12,7 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 
+import com.diamo.cobblemoneconomyplus.admin.AdminService;
 import com.diamo.cobblemoneconomyplus.command.EconomyCommands;
 import com.diamo.cobblemoneconomyplus.content.ShopEditorItem;
 import com.diamo.cobblemoneconomyplus.network.EconomyPayloads;
@@ -33,12 +34,26 @@ public final class CobblemonEconomyPlusFabric implements ModInitializer {
         PayloadTypeRegistry.playC2S().register(EconomyPayloads.ShopActionPayload.TYPE, EconomyPayloads.ShopActionPayload.STREAM_CODEC);
 
         PayloadTypeRegistry.playC2S().register(EconomyPayloads.SellActionPayload.TYPE, EconomyPayloads.SellActionPayload.STREAM_CODEC);
+        PayloadTypeRegistry.playS2C().register(EconomyPayloads.AdminOpenPayload.TYPE, EconomyPayloads.AdminOpenPayload.STREAM_CODEC);
+        PayloadTypeRegistry.playS2C().register(EconomyPayloads.AdminStatusPayload.TYPE, EconomyPayloads.AdminStatusPayload.STREAM_CODEC);
+        PayloadTypeRegistry.playC2S().register(EconomyPayloads.AdminSaveShopPayload.TYPE, EconomyPayloads.AdminSaveShopPayload.STREAM_CODEC);
+        PayloadTypeRegistry.playC2S().register(EconomyPayloads.AdminDeleteShopPayload.TYPE, EconomyPayloads.AdminDeleteShopPayload.STREAM_CODEC);
+        PayloadTypeRegistry.playC2S().register(EconomyPayloads.AdminItemValuePayload.TYPE, EconomyPayloads.AdminItemValuePayload.STREAM_CODEC);
 
         ServerPlayNetworking.registerGlobalReceiver(EconomyPayloads.ShopActionPayload.TYPE, (payload, context) ->
                 context.server().execute(() -> ShopService.handlePurchase(context.player(), payload))
         );
         ServerPlayNetworking.registerGlobalReceiver(EconomyPayloads.SellActionPayload.TYPE, (payload, context) ->
                 context.server().execute(() -> ShopService.handleSale(context.player(), payload))
+        );
+        ServerPlayNetworking.registerGlobalReceiver(EconomyPayloads.AdminSaveShopPayload.TYPE, (payload, context) ->
+                context.server().execute(() -> AdminService.saveShop(context.player(), payload))
+        );
+        ServerPlayNetworking.registerGlobalReceiver(EconomyPayloads.AdminDeleteShopPayload.TYPE, (payload, context) ->
+                context.server().execute(() -> AdminService.deleteShop(context.player(), payload))
+        );
+        ServerPlayNetworking.registerGlobalReceiver(EconomyPayloads.AdminItemValuePayload.TYPE, (payload, context) ->
+                context.server().execute(() -> AdminService.setItemValue(context.player(), payload))
         );
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> CobblemonEconomyPlus.onPlayerJoin(handler.player));
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
