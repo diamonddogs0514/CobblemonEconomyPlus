@@ -74,7 +74,8 @@ public final class ClientEconomy {
                 payload.shopId(),
                 LocalizedText.resolve(payload.shopName(), language),
                 payload.theme(),
-                LocalizedText.resolve(payload.subtitle(), language),
+                // A subtitle missing for this language falls back to the theme's tagline (in this language).
+                LocalizedText.resolveOwnLanguage(payload.subtitle(), language),
                 payload.balance(),
                 payload.entries(),
                 payload.sellEntries());

@@ -59,6 +59,37 @@ public final class LocalizedText {
         return raw;
     }
 
+    /**
+     * Like {@link #resolve}, but a per-language object without the viewer's language (or its family) gives an empty
+     * string instead of another language, so the caller can use its own default. Used for subtitles, whose default
+     * is the theme's tagline in the viewer's language. Plain strings are still shown to everyone.
+     */
+    public static String resolveOwnLanguage(String raw, String languageCode) {
+        if (raw == null || !raw.startsWith("{")) {
+            return raw == null ? "" : raw;
+        }
+        try {
+            JsonObject object = JsonParser.parseString(raw).getAsJsonObject();
+            String lang = languageCode == null ? "" : languageCode.toLowerCase(Locale.ROOT);
+            String exact = find(object, lang);
+            if (exact != null) {
+                return exact;
+            }
+            int underscore = lang.indexOf('_');
+            if (underscore > 0) {
+                String family = lang.substring(0, underscore + 1);
+                for (Map.Entry<String, JsonElement> entry : object.entrySet()) {
+                    if (entry.getKey().toLowerCase(Locale.ROOT).startsWith(family) && isText(entry.getValue())) {
+                        return entry.getValue().getAsString();
+                    }
+                }
+            }
+            return "";
+        } catch (RuntimeException ignored) {
+            return raw;
+        }
+    }
+
     private static String find(JsonObject object, String key) {
         for (Map.Entry<String, JsonElement> entry : object.entrySet()) {
             if (entry.getKey().equalsIgnoreCase(key) && isText(entry.getValue())) {

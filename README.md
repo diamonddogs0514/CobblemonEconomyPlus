@@ -101,7 +101,7 @@ Created in `config/cobblemon_economy_plus/` on first start. Apply edits with `/c
 | Field | Meaning |
 |---|---|
 | `id` | Shop id (lowercase letters, digits, `_`, `-`; up to 32 characters) |
-| `name` / `subtitle` | A plain string, or per-language `{ "en_us": "...", "ja_jp": "..." }`, shown in the viewer's language. Omit `subtitle` for the theme's default tagline |
+| `name` / `subtitle` | A plain string, or per-language `{ "en_us": "...", "ja_jp": "..." }`, shown in the viewer's language. A name missing for the viewer's language uses another listed one; a subtitle missing for it (or omitted) uses the theme's default tagline in that language. A plain string is shown to everyone |
 | `theme` | Screen look (see below). Defaults to `pokeball` |
 | `sell_multiplier` | Multiplier for buy-back prices (0–100, default 1.0). **0 means the shop does not buy items** |
 | `entries` | What the shop sells: `item` (item id), `amount` (items per bundle, 1–64), `price` (price per bundle) |
@@ -193,8 +193,8 @@ Edit shops and sell values in game instead of editing the JSON files. Open it wi
 or Shift + right-click in the air. Requires `cobblemon_economy_plus.admin` (OP 2).
 
 - **Shops tab:** pick a shop on the left, or create one. Edit the id (new shops only), theme, buy-back multiplier,
-  name and subtitle (English column on the left, Japanese on the right; a blank box uses the other language, or the
-  shop id / the theme's default subtitle when both are blank), and the items' price and quantity. *Add held item* adds what you hold; ↑ ↓ reorder; *Save*
+  name and subtitle (English column on the left, Japanese on the right; a blank name uses the other language, or the
+  shop id when both are blank; a blank subtitle uses the theme's default in that language — shown in grey in the box), and the items' price and quantity. *Add held item* adds what you hold; ↑ ↓ reorder; *Save*
   applies the shop.
 - **Advanced:** shows each item's purchase limit (count + daily / weekly / once) and stock (count + restock minutes),
   and the Restock / Reset limits tools. Items that already have a limit or stock show it in the list either way.

@@ -301,10 +301,10 @@ public final class AdminScreen extends Screen {
     }
 
     /**
-     * A blank name or subtitle box shows, in grey italics, what players of that language see instead. When the other
-     * language is filled in, it is used for everyone (one language is saved as plain text), so the box says so rather
-     * than showing the other language's text. When both are blank, the box shows the actual default in its own
-     * language: the shop id for the name, the theme's tagline for the subtitle.
+     * A blank name or subtitle box shows, in grey italics, what players of that language see instead.
+     * Name: when the other language is filled in, it is used for everyone (saved as plain text), so the box says so
+     * rather than showing the other language's text; with both blank, the shop id. Subtitle: always the theme's
+     * tagline in the box's own language (a single-language subtitle is saved per language).
      */
     private void refreshTextHints() {
         if (draft == null || nameEn == null) {
@@ -313,8 +313,8 @@ public final class AdminScreen extends Screen {
         String taglineKey = "gui.cobblemon_economy_plus.boutique_subtitle." + draft.theme;
         blankHint(nameEn, draft.text(draft.name, ShopDraft.JA), "blank_same_as_ja", draft.id);
         blankHint(nameJa, draft.text(draft.name, ShopDraft.EN), "blank_same_as_en", draft.id);
-        blankHint(subtitleEn, draft.text(draft.subtitle, ShopDraft.JA), "blank_same_as_ja", translatedIn(ShopDraft.EN, taglineKey));
-        blankHint(subtitleJa, draft.text(draft.subtitle, ShopDraft.EN), "blank_same_as_en", translatedIn(ShopDraft.JA, taglineKey));
+        blankHint(subtitleEn, "", null, translatedIn(ShopDraft.EN, taglineKey));
+        blankHint(subtitleJa, "", null, translatedIn(ShopDraft.JA, taglineKey));
     }
 
     private static void blankHint(EditBox box, String otherLanguage, String otherKey, String defaultText) {

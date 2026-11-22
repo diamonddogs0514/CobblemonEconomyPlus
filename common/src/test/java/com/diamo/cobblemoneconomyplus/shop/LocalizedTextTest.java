@@ -46,4 +46,14 @@ class LocalizedTextTest {
     void brokenJsonShowsTheRawTextInsteadOfNothing() {
         assertEquals("{not json", LocalizedText.resolve("{not json", "en_us"));
     }
+
+    @Test
+    void subtitlesFallBackToNothingRatherThanAnotherLanguage() {
+        String raw = "{\"en_us\":\"Open daily\"}";
+        assertEquals("Open daily", LocalizedText.resolveOwnLanguage(raw, "en_us"));
+        assertEquals("Open daily", LocalizedText.resolveOwnLanguage(raw, "en_gb"), "same language family");
+        assertEquals("", LocalizedText.resolveOwnLanguage(raw, "ja_jp"), "the theme's tagline is shown instead");
+        assertEquals("Plain text", LocalizedText.resolveOwnLanguage("Plain text", "ja_jp"), "plain text is for everyone");
+        assertEquals("", LocalizedText.resolveOwnLanguage(null, "ja_jp"));
+    }
 }

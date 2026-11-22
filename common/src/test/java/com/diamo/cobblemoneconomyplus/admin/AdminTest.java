@@ -30,7 +30,7 @@ class AdminTest {
     private static final String SHOPS = """
             { "shops": [
               { "id": "general", "name": { "en_us": "General", "ja_jp": "よろず屋", "de_de": "Laden" },
-                "subtitle": "Everyday goods", "theme": "wood", "sell_multiplier": 0.5,
+                "subtitle": { "en_us": "Everyday goods" }, "theme": "wood", "sell_multiplier": 0.5,
                 "entries": [
                   { "item": "minecraft:apple", "amount": 4, "price": 12 },
                   { "item": "minecraft:diamond", "amount": 1, "price": 900,
@@ -111,6 +111,20 @@ class AdminTest {
         assertEquals("", draft.text(draft.name, ShopDraft.EN));
         assertEquals("Open daily", draft.text(draft.subtitle, ShopDraft.EN));
         assertEquals("よろず屋", draft.toJson().json().get("name").getAsString(), "still saved as plain text");
+    }
+
+    @Test
+    void aSubtitleInOneLanguageIsSavedForThatLanguageOnly() {
+        // Other languages then show the theme's tagline in their own language instead of this text.
+        ShopDefinition shop = ShopJson.readShops("""
+                { "shops": [ { "id": "x", "subtitle": "Open daily", "entries": [] } ] }
+                """).get(0);
+        ShopDraft draft = ShopDraft.of(shop);
+        JsonObject subtitle = draft.toJson().json().getAsJsonObject("subtitle");
+        assertEquals("{\"en_us\":\"Open daily\"}", subtitle.toString());
+
+        ShopDraft.setText(draft.subtitle, ShopDraft.EN, "");
+        assertFalse(draft.toJson().json().has("subtitle"), "both blank: no subtitle, the theme's tagline is shown");
     }
 
     @Test

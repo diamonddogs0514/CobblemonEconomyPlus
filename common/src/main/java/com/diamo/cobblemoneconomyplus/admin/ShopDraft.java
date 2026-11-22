@@ -123,9 +123,9 @@ public final class ShopDraft {
         }
         JsonObject json = new JsonObject();
         json.addProperty("id", shopId);
-        JsonElement nameJson = writeLocalized(name);
+        JsonElement nameJson = writeLocalized(name, true);
         json.add("name", nameJson == null ? new JsonPrimitive(shopId) : nameJson);
-        JsonElement subtitleJson = writeLocalized(subtitle);
+        JsonElement subtitleJson = writeLocalized(subtitle, false);
         if (subtitleJson != null) {
             json.add("subtitle", subtitleJson);
         }
@@ -217,8 +217,12 @@ public final class ShopDraft {
         });
     }
 
-    /** A single language is written as plain text (shown to everyone), several as a per-language object. */
-    private static JsonElement writeLocalized(Map<String, String> field) {
+    /**
+     * Several languages are written as a per-language object. A single language is written as plain text (shown to
+     * everyone) when {@code plainWhenSingle}; otherwise it stays an object, so the other languages get their default
+     * (for subtitles: the theme's tagline in the viewer's language).
+     */
+    private static JsonElement writeLocalized(Map<String, String> field, boolean plainWhenSingle) {
         Map<String, String> filled = new LinkedHashMap<>();
         field.forEach((language, text) -> {
             if (text != null && !text.isBlank()) {
@@ -228,7 +232,7 @@ public final class ShopDraft {
         if (filled.isEmpty()) {
             return null;
         }
-        if (filled.size() == 1) {
+        if (filled.size() == 1 && plainWhenSingle) {
             return new JsonPrimitive(filled.values().iterator().next());
         }
         JsonObject object = new JsonObject();

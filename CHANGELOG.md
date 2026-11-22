@@ -33,6 +33,8 @@
 ### Changed
 - `/cep shop reload` reports problems in chat (up to 5, the rest in the server log) and how many item values were loaded.
 - `/cep shop reload` and `/cep shop validate` also cover `rewards.json` and `config.json`.
+- A per-language `subtitle` without the viewer's language now shows the theme's default tagline in that language
+  instead of the English (or first) subtitle. Plain-string subtitles and names are unchanged.
 - Network protocol version is now `1.1` (shop entries carry purchase limits). **Update the mod on the server and all
   clients together.**
 
