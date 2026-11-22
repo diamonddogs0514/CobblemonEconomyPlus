@@ -7,8 +7,12 @@ import com.diamo.cobblemoneconomyplus.platform.PlatformNetworking;
 import com.diamo.cobblemoneconomyplus.shop.ShopDefinition;
 import com.diamo.cobblemoneconomyplus.shop.ShopJson;
 import com.diamo.cobblemoneconomyplus.shop.ShopThemes;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import net.minecraft.ChatFormatting;
 import net.minecraft.Util;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -20,8 +24,11 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
+import java.io.IOException;
+import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -85,6 +92,7 @@ public final class AdminScreen extends Screen {
     private EditBox nameJa;
     private EditBox subtitleEn;
     private EditBox subtitleJa;
+    private final Map<String, JsonObject> languageFiles = new HashMap<>();
 
     private Component status = Component.empty();
     private boolean statusOk = true;
@@ -293,22 +301,43 @@ public final class AdminScreen extends Screen {
     }
 
     /**
-     * A blank name or subtitle box says (never shows another language's text) what players of that language see
-     * instead: the other language (one language is saved as plain text for everyone), or else the id / the tagline.
+     * A blank name or subtitle box shows, in grey italics, what players of that language see instead. When the other
+     * language is filled in, it is used for everyone (one language is saved as plain text), so the box says so rather
+     * than showing the other language's text. When both are blank, the box shows the actual default in its own
+     * language: the shop id for the name, the theme's tagline for the subtitle.
      */
     private void refreshTextHints() {
         if (draft == null || nameEn == null) {
             return;
         }
-        blankHint(nameEn, draft.text(draft.name, ShopDraft.JA), "blank_same_as_ja", "blank_id");
-        blankHint(nameJa, draft.text(draft.name, ShopDraft.EN), "blank_same_as_en", "blank_id");
-        blankHint(subtitleEn, draft.text(draft.subtitle, ShopDraft.JA), "blank_same_as_ja", "blank_theme");
-        blankHint(subtitleJa, draft.text(draft.subtitle, ShopDraft.EN), "blank_same_as_en", "blank_theme");
+        String taglineKey = "gui.cobblemon_economy_plus.boutique_subtitle." + draft.theme;
+        blankHint(nameEn, draft.text(draft.name, ShopDraft.JA), "blank_same_as_ja", draft.id);
+        blankHint(nameJa, draft.text(draft.name, ShopDraft.EN), "blank_same_as_en", draft.id);
+        blankHint(subtitleEn, draft.text(draft.subtitle, ShopDraft.JA), "blank_same_as_ja", translatedIn(ShopDraft.EN, taglineKey));
+        blankHint(subtitleJa, draft.text(draft.subtitle, ShopDraft.EN), "blank_same_as_en", translatedIn(ShopDraft.JA, taglineKey));
     }
 
-    private static void blankHint(EditBox box, String otherLanguage, String otherKey, String fallbackKey) {
-        String key = otherLanguage.isBlank() ? fallbackKey : otherKey;
-        box.setHint(Component.translatable("gui.cobblemon_economy_plus.admin." + key).withStyle(ChatFormatting.ITALIC));
+    private static void blankHint(EditBox box, String otherLanguage, String otherKey, String defaultText) {
+        Component hint = otherLanguage.isBlank() ? Component.literal(defaultText)
+                : Component.translatable("gui.cobblemon_economy_plus.admin." + otherKey);
+        box.setHint(hint.copy().withStyle(ChatFormatting.ITALIC));
+    }
+
+    /** A translation in a given language (not the game's current one), read from this mod's language files. */
+    private String translatedIn(String language, String key) {
+        JsonObject strings = languageFiles.computeIfAbsent(language, this::loadLanguageFile);
+        JsonElement value = strings.get(key);
+        return value != null && value.isJsonPrimitive() ? value.getAsString() : Component.translatable(key).getString();
+    }
+
+    private JsonObject loadLanguageFile(String language) {
+        ResourceLocation file = ResourceLocation.fromNamespaceAndPath("cobblemon_economy_plus", "lang/" + language + ".json");
+        try (Reader reader = Minecraft.getInstance().getResourceManager().openAsReader(file)) {
+            JsonElement parsed = JsonParser.parseReader(reader);
+            return parsed.isJsonObject() ? parsed.getAsJsonObject() : new JsonObject();
+        } catch (IOException | RuntimeException exception) {
+            return new JsonObject();
+        }
     }
 
     private void initValues(int x, int y) {

@@ -154,8 +154,6 @@
   "gui.cobblemon_economy_plus.admin.lang_ja": "日本語 (ja_jp)",
   "gui.cobblemon_economy_plus.admin.blank_same_as_en": "空欄: 英語と同じ",
   "gui.cobblemon_economy_plus.admin.blank_same_as_ja": "空欄: 日本語と同じ",
-  "gui.cobblemon_economy_plus.admin.blank_id": "空欄: ショップ ID を表示",
-  "gui.cobblemon_economy_plus.admin.blank_theme": "空欄: テーマ標準の文",
   "gui.cobblemon_economy_plus.admin.text_tooltip": "左は英語、右は日本語で遊んでいるプレイヤーに表示されます。空欄のときは、もう一方の言語の文が使われます(両方空欄なら、名前はショップ ID、副題はテーマ標準の文)。",
   "gui.cobblemon_economy_plus.admin.advanced": "詳細設定",
   "gui.cobblemon_economy_plus.admin.advanced_tooltip": "購入制限・在庫・補充の設定と、在庫補充・回数リセットのボタンを表示します。",
