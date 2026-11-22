@@ -7,6 +7,7 @@ import com.diamo.cobblemoneconomyplus.platform.PlatformNetworking;
 import com.diamo.cobblemoneconomyplus.shop.ShopDefinition;
 import com.diamo.cobblemoneconomyplus.shop.ShopJson;
 import com.diamo.cobblemoneconomyplus.shop.ShopThemes;
+import net.minecraft.ChatFormatting;
 import net.minecraft.Util;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -292,23 +293,22 @@ public final class AdminScreen extends Screen {
     }
 
     /**
-     * A blank name or subtitle box shows, greyed out, what players of that language will see instead: the other
-     * language's text (one language is saved as plain text for everyone), or else the id / the theme's tagline.
+     * A blank name or subtitle box says (never shows another language's text) what players of that language see
+     * instead: the other language (one language is saved as plain text for everyone), or else the id / the tagline.
      */
     private void refreshTextHints() {
         if (draft == null || nameEn == null) {
             return;
         }
-        String tagline = Component.translatable("gui.cobblemon_economy_plus.boutique_subtitle." + draft.theme).getString();
-        fallbackHint(nameEn, draft.text(draft.name, ShopDraft.JA), draft.id);
-        fallbackHint(nameJa, draft.text(draft.name, ShopDraft.EN), draft.id);
-        fallbackHint(subtitleEn, draft.text(draft.subtitle, ShopDraft.JA), tagline);
-        fallbackHint(subtitleJa, draft.text(draft.subtitle, ShopDraft.EN), tagline);
+        blankHint(nameEn, draft.text(draft.name, ShopDraft.JA), "blank_same_as_ja", "blank_id");
+        blankHint(nameJa, draft.text(draft.name, ShopDraft.EN), "blank_same_as_en", "blank_id");
+        blankHint(subtitleEn, draft.text(draft.subtitle, ShopDraft.JA), "blank_same_as_ja", "blank_theme");
+        blankHint(subtitleJa, draft.text(draft.subtitle, ShopDraft.EN), "blank_same_as_en", "blank_theme");
     }
 
-    private static void fallbackHint(EditBox box, String otherLanguage, String fallback) {
-        String shown = otherLanguage.isBlank() ? fallback : otherLanguage;
-        box.setHint(Component.translatable("gui.cobblemon_economy_plus.admin.fallback_hint", shown));
+    private static void blankHint(EditBox box, String otherLanguage, String otherKey, String fallbackKey) {
+        String key = otherLanguage.isBlank() ? fallbackKey : otherKey;
+        box.setHint(Component.translatable("gui.cobblemon_economy_plus.admin." + key).withStyle(ChatFormatting.ITALIC));
     }
 
     private void initValues(int x, int y) {
