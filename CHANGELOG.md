@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.2.0 (unreleased)
+
+### Added
+- Cobblemon Battle Plus support (optional): the Trainer Card shows the player's Battle Points under the balance,
+  kept up to date as they change (Battle Plus 3.1.0 or newer; older versions refresh with the balance). Without
+  Battle Plus the card is unchanged.
+
+### Changed
+- The balance packet also carries the Battle Points, so `PROTOCOL_VERSION` is now `1.2`: server and client must both
+  run 1.2.0.
+
 ## 1.1.0 - 2026-11-23
 
 ### Added

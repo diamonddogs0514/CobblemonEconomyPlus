@@ -8,6 +8,8 @@ import net.minecraft.client.Minecraft;
 public final class ClientEconomy {
     private static long balance;
     private static boolean synced;
+    /** Cobblemon Battle Plus Battle Points, or -1 when the server does not have Battle Plus. */
+    private static int battlePoints = -1;
 
     private ClientEconomy() {
     }
@@ -16,9 +18,15 @@ public final class ClientEconomy {
         return balance;
     }
 
+    /** The player's Battle Points, or -1 when the server does not have Cobblemon Battle Plus. */
+    public static int battlePoints() {
+        return battlePoints;
+    }
+
     /** Called when the local player changes (new world / respawn): the next balance is not a "change". */
     static void markUnsynced() {
         synced = false;
+        battlePoints = -1;
     }
 
     private static void applyBalance(long newBalance) {
@@ -33,6 +41,7 @@ public final class ClientEconomy {
     }
 
     public static void handleBalance(EconomyPayloads.BalancePayload payload) {
+        battlePoints = payload.battlePoints();
         applyBalance(payload.balance());
     }
 

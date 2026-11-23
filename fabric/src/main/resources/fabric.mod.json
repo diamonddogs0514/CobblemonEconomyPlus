@@ -24,5 +24,8 @@
     "java": ">=21",
     "fabric-api": ">=0.116.12+1.21.1",
     "cobblemon": ">=${cobblemon_version}"
+  },
+  "suggests": {
+    "cobblemonbattleplus": ">=3.1.0"
   }
 }

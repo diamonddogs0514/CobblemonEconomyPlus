@@ -28,6 +28,7 @@
   "gui.cobblemon_economy_plus.card_name": "Name",
   "gui.cobblemon_economy_plus.card_id": "ID",
   "gui.cobblemon_economy_plus.card_balance": "Balance",
+  "gui.cobblemon_economy_plus.card_battle_points": "Battle Points",
   "hud.cobblemon_economy_plus.balance": "Coins: %s",
   "gui.cobblemon_economy_plus.boutique_subtitle.pokeball": "Trainer's Choice",
   "gui.cobblemon_economy_plus.boutique_subtitle.greatball": "A cut above the rest",

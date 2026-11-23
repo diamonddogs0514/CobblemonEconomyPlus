@@ -42,6 +42,17 @@ class EconomyPayloadsTest {
     }
 
     @Test
+    void battlePointsRoundTrip() {
+        assertEquals(new EconomyPayloads.BalancePayload(500L, 42),
+                roundTrip(EconomyPayloads.BalancePayload.STREAM_CODEC, new EconomyPayloads.BalancePayload(500L, 42)));
+        // Without Cobblemon Battle Plus the points are -1, which the Trainer Card reads as "hide the row".
+        assertEquals(-1,
+                roundTrip(EconomyPayloads.BalancePayload.STREAM_CODEC, new EconomyPayloads.BalancePayload(500L)).battlePoints());
+        assertEquals(-1,
+                roundTrip(EconomyPayloads.BalancePayload.STREAM_CODEC, new EconomyPayloads.BalancePayload(500L, -7)).battlePoints());
+    }
+
+    @Test
     void negativeBalancesAreClampedWhenDecoded() {
         assertEquals(0L,
                 roundTrip(EconomyPayloads.BalancePayload.STREAM_CODEC, new EconomyPayloads.BalancePayload(-1L)).balance());

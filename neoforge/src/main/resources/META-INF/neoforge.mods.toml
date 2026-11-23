@@ -31,6 +31,15 @@ versionRange = "[${cobblemon_version},)"
 ordering = "AFTER"
 side = "BOTH"
 
+# Optional: the Trainer Card shows Cobblemon Battle Plus Battle Points when it is installed.
+# Ordering is NONE because Battle Plus orders itself after this mod.
+[[dependencies.${mod_id}]]
+modId = "cobblemonbattleplus"
+type = "optional"
+versionRange = "[3.0.0,)"
+ordering = "NONE"
+side = "BOTH"
+
 # Add mixin configuration like this:
 #[[mixins]]
 #config = "mymod.mixins.json"

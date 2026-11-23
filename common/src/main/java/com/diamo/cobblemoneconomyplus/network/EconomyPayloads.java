@@ -19,7 +19,7 @@ public final class EconomyPayloads {
      * with a clear message). <b>Bump this whenever any payload's wire format changes.</b> Fabric has no
      * built-in version check, so keep client and server on the same mod version there.
      */
-    public static final String PROTOCOL_VERSION = "1.1";
+    public static final String PROTOCOL_VERSION = "1.2";
 
     private static final int MAX_SHOP_ID_LENGTH = 32;
     private static final int MAX_NAME_LENGTH = 512;
@@ -30,14 +30,25 @@ public final class EconomyPayloads {
     private EconomyPayloads() {
     }
 
-    public record BalancePayload(long balance) implements CustomPacketPayload {
+    /**
+     * The player's balance, and their Cobblemon Battle Plus Battle Points for the Trainer Card
+     * ({@code -1} when Battle Plus is not installed).
+     */
+    public record BalancePayload(long balance, int battlePoints) implements CustomPacketPayload {
         public static final Type<BalancePayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(
                 CobblemonEconomyPlus.MOD_ID, "balance"
         ));
         public static final StreamCodec<RegistryFriendlyByteBuf, BalancePayload> STREAM_CODEC = StreamCodec.of(
-                (buffer, payload) -> buffer.writeVarLong(payload.balance),
-                buffer -> new BalancePayload(Math.max(0L, buffer.readVarLong()))
+                (buffer, payload) -> {
+                    buffer.writeVarLong(payload.balance);
+                    buffer.writeVarInt(payload.battlePoints);
+                },
+                buffer -> new BalancePayload(Math.max(0L, buffer.readVarLong()), Math.max(-1, buffer.readVarInt()))
         );
+
+        public BalancePayload(long balance) {
+            this(balance, -1);
+        }
 
         @Override
         public Type<BalancePayload> type() {

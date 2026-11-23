@@ -1,5 +1,6 @@
 package com.diamo.cobblemoneconomyplus;
 
+import com.diamo.cobblemoneconomyplus.integration.BattlePlusIntegration;
 import com.diamo.cobblemoneconomyplus.config.ModConfig;
 import com.diamo.cobblemoneconomyplus.economy.EconomyService;
 import com.diamo.cobblemoneconomyplus.reward.RewardManager;
@@ -29,11 +30,13 @@ public final class CobblemonEconomyPlus {
         ModConfig.reload(server);
         RewardManager.reload(server);
         RewardService.onServerStarted(server);
+        BattlePlusIntegration.onServerStarted(server);
     }
 
     /** Called by each loader when the server is stopping. */
     public static void onServerStopped(MinecraftServer server) {
         RewardService.onServerStopped();
+        BattlePlusIntegration.onServerStopped();
     }
 
     /** Called by each loader when a player joins the server. */

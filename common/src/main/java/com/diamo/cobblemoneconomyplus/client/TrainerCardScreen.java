@@ -16,7 +16,10 @@ import net.minecraft.network.chat.Component;
  */
 public final class TrainerCardScreen extends Screen {
     private static final int WIDTH = 220;
-    private static final int HEIGHT = 120;
+    private static final int BASE_HEIGHT = 120;
+    /** Extra height for the Battle Points strip, shown when the server has Cobblemon Battle Plus. */
+    private static final int POINTS_ROW = 24;
+    private static final int WALLET_Y = 92;
 
     private static final int OUTLINE = 0xFF16181D;
     private static final int RED = 0xFFD8393B;
@@ -31,12 +34,17 @@ public final class TrainerCardScreen extends Screen {
     private static final int GOLD_DARK = 0xFF9C7A1E;
     private static final int GOLD_TEXT = 0xFF9C6B00;
     private static final int WHITE = 0xFFFFFFFF;
+    private static final int BP_BLUE = 0xFF3D6FD6;
+    private static final int BP_BLUE_DARK = 0xFF23458F;
+    private static final int BP_TEXT = 0xFF2A4FA0;
 
     private double shown;
+    private double shownPoints;
 
     public TrainerCardScreen() {
         super(Component.translatable("item.cobblemon_economy_plus.trainer_card"));
         this.shown = ClientEconomy.balance();
+        this.shownPoints = Math.max(0, ClientEconomy.battlePoints());
     }
 
     @Override
@@ -73,11 +81,14 @@ public final class TrainerCardScreen extends Screen {
             return;
         }
 
+        int battlePoints = ClientEconomy.battlePoints();
+        boolean showPoints = battlePoints >= 0;
+        int cardHeight = BASE_HEIGHT + (showPoints ? POINTS_ROW : 0);
         int x = (width - WIDTH) / 2;
-        int y = (height - HEIGHT) / 2;
+        int y = (height - cardHeight) / 2;
 
-        cutRect(g, x, y, WIDTH, HEIGHT, 5, OUTLINE);
-        cutRect(g, x + 2, y + 2, WIDTH - 4, HEIGHT - 4, 4, BODY);
+        cutRect(g, x, y, WIDTH, cardHeight, 5, OUTLINE);
+        cutRect(g, x + 2, y + 2, WIDTH - 4, cardHeight - 4, 4, BODY);
 
         // Header.
         cutRect(g, x + 2, y + 2, WIDTH - 4, 24, 4, RED);
@@ -102,14 +113,24 @@ public final class TrainerCardScreen extends Screen {
         g.drawString(font, String.format("%08X", player.getUUID().hashCode()), fx, y + 72, INK, false);
 
         // Wallet strip.
-        cutRect(g, x + 8, y + HEIGHT - 28, WIDTH - 16, 20, 3, LINE);
-        cutRect(g, x + 9, y + HEIGHT - 27, WIDTH - 18, 18, 2, BODY_DARK);
-        drawCoin(g, x + 20, y + HEIGHT - 18, 6);
-        g.drawString(font, Component.translatable("gui.cobblemon_economy_plus.card_balance"), x + 32, y + HEIGHT - 22, MUTED, false);
-        double diff = ClientEconomy.balance() - shown;
-        shown += Math.abs(diff) < 1.0D ? diff : diff * 0.18D;
+        int walletY = y + WALLET_Y;
+        drawStrip(g, x, walletY);
+        drawCoin(g, x + 20, walletY + 10, 6);
+        g.drawString(font, Component.translatable("gui.cobblemon_economy_plus.card_balance"), x + 32, walletY + 6, MUTED, false);
+        shown = approach(shown, ClientEconomy.balance());
         String amount = EconomyFormat.money(Math.round(shown));
-        g.drawString(font, amount, x + WIDTH - 14 - font.width(amount), y + HEIGHT - 22, GOLD_TEXT, false);
+        g.drawString(font, amount, x + WIDTH - 14 - font.width(amount), walletY + 6, GOLD_TEXT, false);
+
+        // Battle Points strip (Cobblemon Battle Plus).
+        if (showPoints) {
+            int pointsY = walletY + POINTS_ROW;
+            drawStrip(g, x, pointsY);
+            drawPointsBadge(g, x + 20, pointsY + 10);
+            g.drawString(font, Component.translatable("gui.cobblemon_economy_plus.card_battle_points"), x + 32, pointsY + 6, MUTED, false);
+            shownPoints = approach(shownPoints, battlePoints);
+            String points = EconomyFormat.money(Math.round(shownPoints)) + " BP";
+            g.drawString(font, points, x + WIDTH - 14 - font.width(points), pointsY + 6, BP_TEXT, false);
+        }
 
         super.render(g, mouseX, mouseY, partialTick);
     }
@@ -127,6 +148,29 @@ public final class TrainerCardScreen extends Screen {
         }
         disc(g, cx, cy, 3, OUTLINE);
         disc(g, cx, cy, 1, WHITE);
+    }
+
+    /** Counts a shown value towards its target, so changes roll up instead of jumping. */
+    private static double approach(double shownValue, double target) {
+        double diff = target - shownValue;
+        return shownValue + (Math.abs(diff) < 1.0D ? diff : diff * 0.18D);
+    }
+
+    private static void drawStrip(GuiGraphics g, int x, int stripY) {
+        cutRect(g, x + 8, stripY, WIDTH - 16, 20, 3, LINE);
+        cutRect(g, x + 9, stripY + 1, WIDTH - 18, 18, 2, BODY_DARK);
+    }
+
+    /** A small blue shield for Battle Points, the same size as the coin. */
+    private void drawPointsBadge(GuiGraphics g, int cx, int cy) {
+        g.fill(cx - 6, cy - 6, cx + 7, cy + 3, BP_BLUE_DARK);
+        g.fill(cx - 5, cy + 3, cx + 6, cy + 5, BP_BLUE_DARK);
+        g.fill(cx - 3, cy + 5, cx + 4, cy + 7, BP_BLUE_DARK);
+        g.fill(cx - 5, cy - 5, cx + 6, cy + 3, BP_BLUE);
+        g.fill(cx - 4, cy + 3, cx + 5, cy + 4, BP_BLUE);
+        g.fill(cx - 2, cy + 4, cx + 3, cy + 5, BP_BLUE);
+        g.fill(cx - 1, cy - 3, cx + 2, cy + 3, WHITE);
+        g.fill(cx - 3, cy - 1, cx + 4, cy + 1, WHITE);
     }
 
     private void drawCoin(GuiGraphics g, int cx, int cy, int r) {

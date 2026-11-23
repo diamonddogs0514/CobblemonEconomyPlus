@@ -1,5 +1,6 @@
 package com.diamo.cobblemoneconomyplus.economy;
 
+import com.diamo.cobblemoneconomyplus.integration.BattlePlusIntegration;
 import com.diamo.cobblemoneconomyplus.api.BalanceChange;
 import com.diamo.cobblemoneconomyplus.network.EconomyPayloads;
 import com.diamo.cobblemoneconomyplus.platform.PlatformNetworking;
@@ -130,6 +131,7 @@ public final class EconomyService {
     }
 
     public static void sync(ServerPlayer player) {
-        PlatformNetworking.sendToPlayer(player, new EconomyPayloads.BalancePayload(getBalance(player)));
+        PlatformNetworking.sendToPlayer(player, new EconomyPayloads.BalancePayload(getBalance(player),
+                BattlePlusIntegration.battlePoints(player.getServer(), player.getUUID())));
     }
 }

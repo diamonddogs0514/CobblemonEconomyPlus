@@ -28,6 +28,7 @@
   "gui.cobblemon_economy_plus.card_name": "なまえ",
   "gui.cobblemon_economy_plus.card_id": "ID",
   "gui.cobblemon_economy_plus.card_balance": "所持金",
+  "gui.cobblemon_economy_plus.card_battle_points": "バトルポイント",
   "hud.cobblemon_economy_plus.balance": "所持金: %s",
   "gui.cobblemon_economy_plus.boutique_subtitle.pokeball": "ポケモントレーナー御用達",
   "gui.cobblemon_economy_plus.boutique_subtitle.greatball": "ワンランク上の品ぞろえ",
