@@ -1,13 +1,14 @@
 name: Build and Release
 
-on: release
+on:
+  release:
+    # Only when a release is published (not on create / edit too), so each version is uploaded once.
+    types: [published]
 
-# TODO: for automatic publishing, set your project's modrinth and curseforge IDs here
-# Also set the environment secrets "MODRINTH_TOKEN" and "CURSEFORGE_TOKEN" with respective tokens
-# See the "Automatic Release Publishing" section in README for details
+# Publishing to Modrinth and CurseForge needs the repository secrets MODRINTH_TOKEN and CURSEFORGE_TOKEN.
 env:
-  MODRINTH_ID: abcdefgh # TODO
-  CURSEFORGE_ID: 1234567 # TODO
+  MODRINTH_ID: M7XGBo0H
+  CURSEFORGE_ID: 1794401
 
 jobs:
   build:
