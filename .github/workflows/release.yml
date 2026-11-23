@@ -40,6 +40,8 @@ jobs:
         uses: Kir-Antipov/mc-publish@v3.3
         with:
           name: ${{ github.event.release.name }} (Fabric)
+          # Cobblemon 1.8.4 runs on 1.21.1 only; do not let a version range expand to every 1.21.x.
+          game-versions: 1.21.1
           modrinth-id: ${{ env.MODRINTH_ID }}
           modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
 
@@ -56,6 +58,8 @@ jobs:
         uses: Kir-Antipov/mc-publish@v3.3
         with:
           name: ${{ github.event.release.name }} (NeoForge)
+          # Cobblemon 1.8.4 runs on 1.21.1 only; do not let a version range expand to every 1.21.x.
+          game-versions: 1.21.1
           modrinth-id: ${{ env.MODRINTH_ID }}
           modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
 
