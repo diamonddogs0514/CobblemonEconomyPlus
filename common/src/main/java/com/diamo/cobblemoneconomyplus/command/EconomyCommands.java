@@ -115,6 +115,15 @@ public final class EconomyCommands {
                 .then(Commands.literal("daily")
                         .requires(source -> EconomyPermissions.has(source, EconomyPermission.DAILY))
                         .executes(context -> openDaily(context.getSource()))
+                        .then(Commands.literal("reset")
+                                .requires(source -> EconomyPermissions.has(source, EconomyPermission.DAILY_RESET))
+                                .then(Commands.argument("player", GameProfileArgument.gameProfile())
+                                        .executes(context -> resetDaily(
+                                                context.getSource(),
+                                                GameProfileArgument.getGameProfiles(context, "player")
+                                        ))
+                                )
+                        )
                 )
                 .then(Commands.literal("top")
                         .requires(source -> EconomyPermissions.has(source, EconomyPermission.TOP))
@@ -531,6 +540,21 @@ public final class EconomyCommands {
                         profile.getName()), true);
             } else {
                 source.sendSuccess(() -> Component.translatable("command.cobblemon_economy_plus.limits_reset_none",
+                        profile.getName()), false);
+            }
+        }
+        return reset;
+    }
+
+    private static int resetDaily(CommandSourceStack source, Collection<GameProfile> profiles) {
+        int reset = 0;
+        for (GameProfile profile : profiles) {
+            if (com.diamo.cobblemoneconomyplus.reward.RewardSavedData.get(source.getServer()).resetLogin(profile.getId())) {
+                reset++;
+                source.sendSuccess(() -> Component.translatable("command.cobblemon_economy_plus.daily_reset",
+                        profile.getName()), true);
+            } else {
+                source.sendSuccess(() -> Component.translatable("command.cobblemon_economy_plus.daily_reset_none",
                         profile.getName()), false);
             }
         }

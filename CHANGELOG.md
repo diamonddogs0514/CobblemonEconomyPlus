@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.2.0 (unreleased)
+## 1.2.0 - 2026-11-24
 
 ### Added
 - Cobblemon Battle Plus support (optional): the Trainer Card shows the player's Battle Points under the balance,
@@ -16,6 +16,8 @@
   towards `daily_cap`. The login count is saved in `data/cobblemon_economy_plus_rewards.dat` (data version 2).
 - `/cep daily` shows the calendar, and pays today's bonus if the player has not received it yet (for example after
   staying online past midnight). Permission node `cobblemon_economy_plus.daily` (everyone by default).
+- `/cep daily reset <player>` forgets a player's login count, so their next login (or `/cep daily`) pays day 1
+  again. Permission node `cobblemon_economy_plus.daily.reset` (OP 2).
 - Text Placeholder API support (Fabric, optional): `%cobblemon_economy_plus:balance%`, `balance_raw`, `rank`,
   `top_name N` and `top_balance N`.
 - API: the `DAILY_LOGIN` reward type, so other mods can cancel or change the login bonus. `API_VERSION` is now 3.

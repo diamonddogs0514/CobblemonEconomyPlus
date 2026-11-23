@@ -51,6 +51,7 @@ Cobblemon に経済の仕組みを加える、Minecraft 1.21.1 向けの Mod で
 | `/cep balance <player>` | 他のプレイヤーの所持金を確認 | `cobblemon_economy_plus.balance.others`(OP2) |
 | `/cep pay <player> <amount>`、`/pay <player> <amount>` | 送金 | `cobblemon_economy_plus.pay`(全員) |
 | `/cep daily` | ログインボーナスのカレンダーを表示。今日の分をまだ受け取っていなければ(0 時をまたいでログインしたままなど)ここで受け取れる | `cobblemon_economy_plus.daily`(全員) |
+| `/cep daily reset <player>` | そのプレイヤーのログイン日数を消す。次のログイン(または `/cep daily`)でまた 1 日目がもらえる | `cobblemon_economy_plus.daily.reset`(OP 2) |
 | `/cep top [ページ]` | 所持金ランキング(1 ページ 10 人、自分の順位も表示。オフラインのプレイヤーも含む) | `cobblemon_economy_plus.top`(全員) |
 | `/cep money get <player>` | 所持金を確認 | `cobblemon_economy_plus.money`(OP2) |
 | `/cep money set <players> <amount>` | 所持金を設定 | 同上 |

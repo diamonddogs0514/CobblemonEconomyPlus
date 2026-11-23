@@ -143,6 +143,15 @@ public final class RewardSavedData extends SavedData {
         setDirty();
     }
 
+    /** Forgets the player's login count, so their next login pays day 1 again. False when there was none. */
+    public boolean resetLogin(UUID playerId) {
+        if (logins.remove(playerId) == null) {
+            return false;
+        }
+        setDirty();
+        return true;
+    }
+
     /** Reward coins paid to the player on {@code day} (an epoch day); 0 for any other day. */
     public long rewardedOn(UUID playerId, long day) {
         DailyTotal total = daily.get(playerId);

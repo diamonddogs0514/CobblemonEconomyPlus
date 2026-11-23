@@ -54,6 +54,7 @@ mainly for multiplayer servers.
 | `/cep balance <player>` | Show someone else's balance | `cobblemon_economy_plus.balance.others` (OP 2) |
 | `/cep pay <player> <amount>`, `/pay <player> <amount>` | Pay another player | `cobblemon_economy_plus.pay` (everyone) |
 | `/cep daily` | Show the login bonus calendar; also pays today's bonus if you have not received it yet (e.g. you stayed online past midnight) | `cobblemon_economy_plus.daily` (everyone) |
+| `/cep daily reset <player>` | Forget the player's login count: their next login (or `/cep daily`) pays day 1 again | `cobblemon_economy_plus.daily.reset` (OP 2) |
 | `/cep top [page]` | Balance ranking, 10 players per page, with your own rank (offline players included) | `cobblemon_economy_plus.top` (everyone) |
 | `/cep money get <player>` | Show a balance | `cobblemon_economy_plus.money` (OP 2) |
 | `/cep money set <players> <amount>` | Set balances | same |

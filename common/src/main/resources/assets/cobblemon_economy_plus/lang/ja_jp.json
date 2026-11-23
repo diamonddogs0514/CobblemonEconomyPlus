@@ -140,6 +140,8 @@
   "gui.cobblemon_economy_plus.daily_claimed_before": "今日のボーナスは受け取り済みです。また明日!",
   "gui.cobblemon_economy_plus.daily_nothing": "なし",
   "command.cobblemon_economy_plus.daily_disabled": "このサーバーにはログインボーナスがありません。",
+  "command.cobblemon_economy_plus.daily_reset": "%s のログインボーナスをリセットしました。次のログインで 1 日目がもらえます（/cep daily ですぐ受け取れます）。",
+  "command.cobblemon_economy_plus.daily_reset_none": "%s のログインボーナスの記録はありません。",
   "config.cobblemon_economy_plus.login_days_invalid": "daily_login.days は 1〜%s 日分のリストにしてください。既定の日程を使います",
   "config.cobblemon_economy_plus.login_day_invalid": "daily_login.days: %s 日目は { \"coins\": 100 } のようなオブジェクトにしてください。この日は何も出ません",
   "config.cobblemon_economy_plus.login_items_not_list": "daily_login.days: %s 日目の items はリストにしてください。この日のアイテムは出ません",

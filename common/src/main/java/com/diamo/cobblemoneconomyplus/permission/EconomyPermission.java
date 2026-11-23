@@ -18,6 +18,8 @@ public enum EconomyPermission {
     TOP("top", 0),
     /** {@code /cep daily} (login bonus calendar; also claims today's bonus if it was not paid yet). */
     DAILY("daily", 0),
+    /** {@code /cep daily reset <player>}: forget a player's login count so the next login pays day 1 again. */
+    DAILY_RESET("daily.reset", 2),
     /** {@code /cep money get|set|add|take}. */
     MONEY("money", 2),
     /** {@code /cep shop reload|list}. */

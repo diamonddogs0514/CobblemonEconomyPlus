@@ -140,6 +140,8 @@
   "gui.cobblemon_economy_plus.daily_claimed_before": "Today's bonus is already yours. See you tomorrow!",
   "gui.cobblemon_economy_plus.daily_nothing": "Nothing",
   "command.cobblemon_economy_plus.daily_disabled": "There is no daily login bonus on this server.",
+  "command.cobblemon_economy_plus.daily_reset": "Reset the login bonus of %s. Their next login pays day 1 (use /cep daily to receive it now).",
+  "command.cobblemon_economy_plus.daily_reset_none": "%s has no login bonus record to reset.",
   "command.cobblemon_economy_plus.top_header": "Richest players (page %s / %s, %s players)",
   "command.cobblemon_economy_plus.top_amount": "%s coins",
   "command.cobblemon_economy_plus.top_own_rank": "Your rank: #%s of %s (%s coins)",
