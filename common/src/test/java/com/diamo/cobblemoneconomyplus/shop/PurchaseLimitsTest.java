@@ -1,5 +1,6 @@
 package com.diamo.cobblemoneconomyplus.shop;
 
+import com.diamo.cobblemoneconomyplus.config.ConfigMessage;
 import com.diamo.cobblemoneconomyplus.TestBootstrap;
 import net.minecraft.nbt.CompoundTag;
 import org.junit.jupiter.api.BeforeAll;
@@ -143,7 +144,7 @@ class PurchaseLimitsTest {
 
     @Test
     void anEntryWithABrokenLimitIsSkippedRatherThanSoldWithoutIt() {
-        List<String> warnings = new ArrayList<>();
+        List<ConfigMessage> warnings = new ArrayList<>();
         ShopDefinition shop = ShopManager.parse("""
                 { "shops": [ { "id": "rare", "entries": [
                   { "item": "minecraft:diamond", "amount": 1, "price": 500, "limit": { "per_player": 0 } },

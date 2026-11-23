@@ -1,8 +1,9 @@
 package com.diamo.cobblemoneconomyplus.reward;
 
 import com.diamo.cobblemoneconomyplus.CobblemonEconomyPlus;
+import com.diamo.cobblemoneconomyplus.config.ConfigMessage;
 import com.diamo.cobblemoneconomyplus.config.ConfigResult;
-import com.google.gson.JsonParseException;
+import com.diamo.cobblemoneconomyplus.shop.ShopManager;
 import net.minecraft.server.MinecraftServer;
 
 import java.io.IOException;
@@ -32,8 +33,8 @@ public final class RewardManager {
     public static synchronized ConfigResult reload(MinecraftServer server) {
         boolean firstLoad = loadedFor != server;
         Path path = path(server);
-        List<String> errors = new ArrayList<>();
-        List<String> warnings = new ArrayList<>();
+        List<ConfigMessage> errors = new ArrayList<>();
+        List<ConfigMessage> warnings = new ArrayList<>();
         try {
             if (!Files.exists(path)) {
                 Files.createDirectories(path.getParent());
@@ -47,17 +48,17 @@ public final class RewardManager {
                 config = RewardConfig.defaults();
             }
         } catch (IOException exception) {
-            errors.add(FILE_NAME + ": could not read " + path + ": " + exception.getMessage());
+            errors.add(ShopManager.cannotRead(path, exception).inFile(FILE_NAME));
             if (firstLoad) {
                 config = RewardConfig.defaults();
             }
         }
         loadedFor = server;
-        for (String warning : warnings) {
-            CobblemonEconomyPlus.LOGGER.warn(warning);
+        for (ConfigMessage warning : warnings) {
+            CobblemonEconomyPlus.LOGGER.warn(warning.text());
         }
-        for (String error : errors) {
-            CobblemonEconomyPlus.LOGGER.error("Could not load {}. {}", error, firstLoad
+        for (ConfigMessage error : errors) {
+            CobblemonEconomyPlus.LOGGER.error("Could not load {}. {}", error.text(), firstLoad
                     ? "Using the built-in reward defaults until it is fixed and reloaded."
                     : "Keeping the previously loaded reward settings.");
         }
@@ -67,42 +68,32 @@ public final class RewardManager {
     /** Checks rewards.json without applying it. */
     public static ConfigResult validate(MinecraftServer server) {
         Path path = path(server);
-        List<String> errors = new ArrayList<>();
-        List<String> warnings = new ArrayList<>();
+        List<ConfigMessage> errors = new ArrayList<>();
+        List<ConfigMessage> warnings = new ArrayList<>();
         if (!Files.exists(path)) {
-            errors.add(FILE_NAME + ": file not found (" + path + "); it is created with defaults on the next reload");
+            errors.add(ShopManager.fileNotFound(path).inFile(FILE_NAME));
             return new ConfigResult(errors, warnings);
         }
         try {
             read(Files.readString(path, StandardCharsets.UTF_8), errors, warnings);
         } catch (IOException exception) {
-            errors.add(FILE_NAME + ": could not read " + path + ": " + exception.getMessage());
+            errors.add(ShopManager.cannotRead(path, exception).inFile(FILE_NAME));
         }
         return new ConfigResult(errors, warnings);
     }
 
     /** Parses the file text; returns null (and adds an error) when it cannot be used. Never throws. */
-    static RewardConfig read(String source, List<String> errors, List<String> warnings) {
-        List<String> fileWarnings = new ArrayList<>();
+    static RewardConfig read(String source, List<ConfigMessage> errors, List<ConfigMessage> warnings) {
+        List<ConfigMessage> fileWarnings = new ArrayList<>();
         try {
             RewardConfig parsed = RewardConfig.parse(source, fileWarnings);
-            fileWarnings.forEach(warning -> warnings.add(FILE_NAME + ": " + warning));
+            fileWarnings.forEach(warning -> warnings.add(warning.inFile(FILE_NAME)));
             return parsed;
         } catch (RuntimeException exception) {
-            fileWarnings.forEach(warning -> warnings.add(FILE_NAME + ": " + warning));
-            errors.add(FILE_NAME + ": " + describe(exception));
+            fileWarnings.forEach(warning -> warnings.add(warning.inFile(FILE_NAME)));
+            errors.add(ShopManager.describe(exception).inFile(FILE_NAME));
             return null;
         }
-    }
-
-    private static String describe(RuntimeException exception) {
-        Throwable cause = exception;
-        while (cause.getCause() != null && cause.getCause() != cause) {
-            cause = cause.getCause();
-        }
-        String message = cause.getMessage() == null || cause.getMessage().isBlank()
-                ? cause.getClass().getSimpleName() : cause.getMessage();
-        return exception instanceof JsonParseException ? "invalid JSON (" + message + ")" : message;
     }
 
     public static Path path(MinecraftServer server) {

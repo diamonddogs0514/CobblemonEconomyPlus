@@ -1,5 +1,6 @@
 package com.diamo.cobblemoneconomyplus.reward;
 
+import com.diamo.cobblemoneconomyplus.config.ConfigMessage;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -17,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class RewardConfigTest {
-    private static RewardConfig parse(String json, List<String> warnings) {
+    private static RewardConfig parse(String json, List<ConfigMessage> warnings) {
         return RewardConfig.parse(json, warnings);
     }
 
@@ -39,7 +40,7 @@ class RewardConfigTest {
 
     @Test
     void missingFieldsUseTheDefaults() {
-        List<String> warnings = new ArrayList<>();
+        List<ConfigMessage> warnings = new ArrayList<>();
         RewardConfig config = parse("{ \"daily_cap\": 3000, \"capture\": { \"base\": 7 } }", warnings);
         assertTrue(warnings.isEmpty(), warnings::toString);
         assertEquals(3000L, config.dailyCap());
@@ -68,7 +69,7 @@ class RewardConfigTest {
 
     @Test
     void badValuesAreReplacedWithAWarning() {
-        List<String> warnings = new ArrayList<>();
+        List<ConfigMessage> warnings = new ArrayList<>();
         RewardConfig config = parse("""
                 { "enabled": "yes", "daily_cap": -5,
                   "wild_battle": { "base": 1.5, "per_level": "x" },
@@ -83,10 +84,10 @@ class RewardConfigTest {
 
     @Test
     void brokenJsonIsAnErrorAndNotApplied() {
-        List<String> errors = new ArrayList<>();
+        List<ConfigMessage> errors = new ArrayList<>();
         assertNull(RewardManager.read("{ \"daily_cap\": 10 \"enabled\": true }", errors, new ArrayList<>()));
         assertEquals(1, errors.size());
-        assertTrue(errors.get(0).startsWith("rewards.json: invalid JSON"), errors.get(0));
+        assertTrue(errors.get(0).text().startsWith("rewards.json: invalid JSON"), errors.get(0).text());
 
         errors.clear();
         assertNull(RewardManager.read("[]", errors, new ArrayList<>()));

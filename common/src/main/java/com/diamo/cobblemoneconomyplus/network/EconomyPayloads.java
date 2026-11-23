@@ -2,6 +2,9 @@ package com.diamo.cobblemoneconomyplus.network;
 
 import com.diamo.cobblemoneconomyplus.CobblemonEconomyPlus;
 import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.ComponentSerialization;
+import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
@@ -210,8 +213,6 @@ public final class EconomyPayloads {
     public static final int MAX_ADMIN_JSON = 262_144;
     /** Longest single shop the admin screen may send back. Client-to-server packets are limited to 32 KiB. */
     public static final int MAX_ADMIN_SHOP_JSON = 30_000;
-    private static final int MAX_STATUS_ARGS = 4;
-    private static final int MAX_STATUS_ARG_LENGTH = 256;
 
     /**
      * Opens (or refreshes) the admin screen with every shop and item value, in the file layout of shops.json and
@@ -245,39 +246,15 @@ public final class EconomyPayloads {
     }
 
     /** The outcome of an admin edit, shown in the admin screen: a translation key and its arguments. */
-    public record AdminStatusPayload(boolean success, String key, List<String> args) implements CustomPacketPayload {
+    public record AdminStatusPayload(boolean success, Component message) implements CustomPacketPayload {
         public static final Type<AdminStatusPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(
                 CobblemonEconomyPlus.MOD_ID, "admin_status"
         ));
-        public static final StreamCodec<RegistryFriendlyByteBuf, AdminStatusPayload> STREAM_CODEC = StreamCodec.of(
-                (buffer, payload) -> {
-                    buffer.writeBoolean(payload.success);
-                    buffer.writeUtf(payload.key, MAX_NAME_LENGTH);
-                    buffer.writeVarInt(payload.args.size());
-                    for (String arg : payload.args) {
-                        buffer.writeUtf(arg, MAX_STATUS_ARG_LENGTH);
-                    }
-                },
-                buffer -> {
-                    boolean success = buffer.readBoolean();
-                    String key = buffer.readUtf(MAX_NAME_LENGTH);
-                    int size = buffer.readVarInt();
-                    if (size < 0 || size > MAX_STATUS_ARGS) {
-                        throw new IllegalArgumentException("Invalid status argument count: " + size);
-                    }
-                    List<String> args = new ArrayList<>(size);
-                    for (int index = 0; index < size; index++) {
-                        args.add(buffer.readUtf(MAX_STATUS_ARG_LENGTH));
-                    }
-                    return new AdminStatusPayload(success, key, args);
-                }
+        public static final StreamCodec<RegistryFriendlyByteBuf, AdminStatusPayload> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.BOOL, AdminStatusPayload::success,
+                ComponentSerialization.TRUSTED_STREAM_CODEC, AdminStatusPayload::message,
+                AdminStatusPayload::new
         );
-
-        public AdminStatusPayload {
-            args = args.stream().limit(MAX_STATUS_ARGS)
-                    .map(arg -> arg.length() > MAX_STATUS_ARG_LENGTH ? arg.substring(0, MAX_STATUS_ARG_LENGTH) : arg)
-                    .toList();
-        }
 
         @Override
         public Type<AdminStatusPayload> type() {

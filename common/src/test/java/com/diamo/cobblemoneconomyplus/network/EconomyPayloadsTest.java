@@ -4,6 +4,8 @@ import io.netty.buffer.Unpooled;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
+import com.diamo.cobblemoneconomyplus.TestBootstrap;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -14,6 +16,12 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /** Wire-format round trips. If one of these fails after a change, bump EconomyPayloads.PROTOCOL_VERSION. */
 class EconomyPayloadsTest {
+    @BeforeAll
+    static void bootstrap() {
+        // Chat components go through codecs that read the registries.
+        TestBootstrap.init();
+    }
+
     private static <T> T roundTrip(StreamCodec<RegistryFriendlyByteBuf, T> codec, T value) {
         RegistryFriendlyByteBuf buffer = new RegistryFriendlyByteBuf(Unpooled.buffer(), RegistryAccess.EMPTY);
         codec.encode(buffer, value);
@@ -74,7 +82,9 @@ class EconomyPayloadsTest {
     void adminPayloadsRoundTrip() {
         var open = new EconomyPayloads.AdminOpenPayload(7, "general", "{\"shops\":[]}", "{\"values\":{}}");
         assertEquals(open, roundTrip(EconomyPayloads.AdminOpenPayload.STREAM_CODEC, open));
-        var status = new EconomyPayloads.AdminStatusPayload(false, "message.x", List.of("a", "b"));
+        var status = new EconomyPayloads.AdminStatusPayload(false,
+                net.minecraft.network.chat.Component.translatable("message.x", "a",
+                        net.minecraft.network.chat.Component.translatableWithFallback("config.y", "fallback %s", "b")));
         assertEquals(status, roundTrip(EconomyPayloads.AdminStatusPayload.STREAM_CODEC, status));
         var save = new EconomyPayloads.AdminSaveShopPayload(7, "", "{\"id\":\"new\"}");
         assertEquals(save, roundTrip(EconomyPayloads.AdminSaveShopPayload.STREAM_CODEC, save));

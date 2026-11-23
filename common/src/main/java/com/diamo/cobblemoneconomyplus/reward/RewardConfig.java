@@ -1,5 +1,7 @@
 package com.diamo.cobblemoneconomyplus.reward;
 
+import com.diamo.cobblemoneconomyplus.config.ConfigException;
+import com.diamo.cobblemoneconomyplus.config.ConfigMessage;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -80,10 +82,10 @@ public record RewardConfig(
      * Parses rewards.json text. Throws on invalid JSON (the caller keeps the previous settings); values that are
      * wrong in themselves (negative, not a number) are replaced by their default and reported in {@code warnings}.
      */
-    static RewardConfig parse(String source, List<String> warnings) {
+    static RewardConfig parse(String source, List<ConfigMessage> warnings) {
         JsonElement root = JsonParser.parseString(source);
         if (!root.isJsonObject()) {
-            throw new IllegalArgumentException("the file must contain a JSON object");
+            throw new ConfigException("root_not_object", "the root JSON value must be an object");
         }
         JsonObject json = root.getAsJsonObject();
         JsonObject defaults = DEFAULT_JSON.equals(source) ? json : JsonParser.parseString(DEFAULT_JSON).getAsJsonObject();
@@ -106,7 +108,7 @@ public record RewardConfig(
         );
     }
 
-    private static Formula formula(JsonObject json, JsonObject defaults, String key, List<String> warnings) {
+    private static Formula formula(JsonObject json, JsonObject defaults, String key, List<ConfigMessage> warnings) {
         JsonObject fallback = defaults.getAsJsonObject(key);
         long defaultBase = fallback.get("base").getAsLong();
         long defaultPerLevel = fallback.get("per_level").getAsLong();
@@ -121,10 +123,11 @@ public record RewardConfig(
                 amount(section, "per_level", defaultPerLevel, prefix, warnings));
     }
 
-    private static NavigableMap<Integer, Long> milestones(JsonElement element, List<String> warnings) {
+    private static NavigableMap<Integer, Long> milestones(JsonElement element, List<ConfigMessage> warnings) {
         TreeMap<Integer, Long> result = new TreeMap<>();
         if (!element.isJsonObject()) {
-            warnings.add("pokedex_milestones.milestones must be an object like { \"10\": 500 }; no milestones are paid");
+            warnings.add(ConfigMessage.of("milestones_not_object",
+                    "pokedex_milestones.milestones must be an object like { \"10\": 500 }; no milestones are paid"));
             return result;
         }
         for (Map.Entry<String, JsonElement> entry : element.getAsJsonObject().entrySet()) {
@@ -132,13 +135,15 @@ public record RewardConfig(
             try {
                 count = Integer.parseInt(entry.getKey().trim());
             } catch (NumberFormatException exception) {
-                warnings.add("pokedex_milestones: \"" + entry.getKey() + "\" is not a number of species; skipped");
+                warnings.add(ConfigMessage.of("milestone_not_number",
+                        "pokedex_milestones: \"%s\" is not a number of species; skipped", entry.getKey()));
                 continue;
             }
             Long coins = number(entry.getValue());
             if (count <= 0 || coins == null || coins < 0 || coins > MAX_AMOUNT) {
-                warnings.add("pokedex_milestones: \"" + entry.getKey() + "\" needs a positive species count and 0-"
-                        + MAX_AMOUNT + " coins; skipped");
+                warnings.add(ConfigMessage.of("milestone_invalid",
+                        "pokedex_milestones: \"%s\" needs a positive species count and 0-%s coins; skipped",
+                        entry.getKey(), MAX_AMOUNT));
                 continue;
             }
             result.put(count, coins);
@@ -146,18 +151,18 @@ public record RewardConfig(
         return result;
     }
 
-    private static JsonObject object(JsonObject json, String key, List<String> warnings) {
+    private static JsonObject object(JsonObject json, String key, List<ConfigMessage> warnings) {
         if (!json.has(key)) {
             return null;
         }
         if (!json.get(key).isJsonObject()) {
-            warnings.add(key + " must be an object; using the defaults");
+            warnings.add(ConfigMessage.of("section_not_object", "%s must be an object; using the defaults", key));
             return null;
         }
         return json.getAsJsonObject(key);
     }
 
-    private static boolean bool(JsonObject json, String key, boolean fallback, String prefix, List<String> warnings) {
+    private static boolean bool(JsonObject json, String key, boolean fallback, String prefix, List<ConfigMessage> warnings) {
         if (!json.has(key)) {
             return fallback;
         }
@@ -165,17 +170,18 @@ public record RewardConfig(
         if (value.isJsonPrimitive() && value.getAsJsonPrimitive().isBoolean()) {
             return value.getAsBoolean();
         }
-        warnings.add(prefix + key + " must be true or false; using " + fallback);
+        warnings.add(ConfigMessage.of("not_boolean", "%s must be true or false; using %s", prefix + key, fallback));
         return fallback;
     }
 
-    private static long amount(JsonObject json, String key, long fallback, String prefix, List<String> warnings) {
+    private static long amount(JsonObject json, String key, long fallback, String prefix, List<ConfigMessage> warnings) {
         if (!json.has(key)) {
             return fallback;
         }
         Long value = number(json.get(key));
         if (value == null || value < 0 || value > MAX_AMOUNT) {
-            warnings.add(prefix + key + " must be a whole number from 0 to " + MAX_AMOUNT + "; using " + fallback);
+            warnings.add(ConfigMessage.of("bad_reward_amount", "%s must be a whole number from 0 to %s; using %s",
+                    prefix + key, MAX_AMOUNT, fallback));
             return fallback;
         }
         return value;

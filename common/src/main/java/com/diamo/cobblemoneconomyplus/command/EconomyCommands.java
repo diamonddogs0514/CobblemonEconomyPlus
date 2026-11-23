@@ -2,6 +2,7 @@ package com.diamo.cobblemoneconomyplus.command;
 
 import com.diamo.cobblemoneconomyplus.admin.AdminService;
 import com.diamo.cobblemoneconomyplus.api.CobblemonEconomyApi;
+import com.diamo.cobblemoneconomyplus.config.ConfigMessage;
 import com.diamo.cobblemoneconomyplus.config.ConfigResult;
 import com.diamo.cobblemoneconomyplus.config.ModConfig;
 import com.diamo.cobblemoneconomyplus.economy.BalanceRanking;
@@ -473,8 +474,8 @@ public final class EconomyCommands {
 
     /** Adds the problems found in the other config files (rewards.json, config.json) to a shop report. */
     private static ShopManager.Report withOtherFiles(ShopManager.Report shops, ConfigResult... others) {
-        List<String> errors = new ArrayList<>(shops.errors());
-        List<String> warnings = new ArrayList<>(shops.warnings());
+        List<ConfigMessage> errors = new ArrayList<>(shops.errors());
+        List<ConfigMessage> warnings = new ArrayList<>(shops.warnings());
         for (ConfigResult other : others) {
             errors.addAll(other.errors());
             warnings.addAll(other.warnings());
@@ -484,14 +485,14 @@ public final class EconomyCommands {
 
     private static void sendProblems(CommandSourceStack source, ShopManager.Report report) {
         int shown = 0;
-        for (String error : report.errors()) {
+        for (ConfigMessage error : report.errors()) {
             if (shown++ < MAX_PROBLEMS_IN_CHAT) {
-                source.sendFailure(Component.literal(" - " + error));
+                source.sendFailure(Component.literal(" - ").append(error.component()));
             }
         }
-        for (String warning : report.warnings()) {
+        for (ConfigMessage warning : report.warnings()) {
             if (shown++ < MAX_PROBLEMS_IN_CHAT) {
-                source.sendSystemMessage(Component.literal(" - " + warning).withStyle(ChatFormatting.YELLOW));
+                source.sendSystemMessage(Component.literal(" - ").append(warning.component()).withStyle(ChatFormatting.YELLOW));
             }
         }
         int hidden = report.errors().size() + report.warnings().size() - MAX_PROBLEMS_IN_CHAT;

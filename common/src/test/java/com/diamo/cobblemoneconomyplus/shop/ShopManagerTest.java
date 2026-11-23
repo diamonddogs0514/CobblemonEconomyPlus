@@ -184,8 +184,8 @@ class ShopManagerTest {
         String broken = TWO_SHOPS.replace("\"amount\": 1,", "\"amount\": 1");
         ShopManager.Parsed<Map<String, ShopDefinition>> parsed = ShopManager.parseShops(broken);
         assertFalse(parsed.ok());
-        assertTrue(parsed.error().startsWith("invalid JSON"), parsed.error());
-        assertTrue(parsed.error().contains("line 2"), parsed.error());
+        assertTrue(parsed.error().text().startsWith("invalid JSON"), parsed.error().text());
+        assertTrue(parsed.error().text().contains("line 2"), parsed.error().text());
     }
 
     @Test
@@ -231,7 +231,7 @@ class ShopManagerTest {
 
     @Test
     void aFailedReloadKeepsThePreviousValuesAndOnlyTheFirstLoadFallsBackToDefaults() {
-        ShopManager.Parsed<String> failed = new ShopManager.Parsed<>(null, "broken", java.util.List.of());
+        ShopManager.Parsed<String> failed = new ShopManager.Parsed<>(null, com.diamo.cobblemoneconomyplus.config.ConfigMessage.raw("broken"), java.util.List.of());
         ShopManager.Parsed<String> fresh = new ShopManager.Parsed<>("new", null, java.util.List.of());
         assertEquals("previous", ShopManager.choose(failed, "previous", false, () -> "defaults"));
         assertEquals("defaults", ShopManager.choose(failed, "previous", true, () -> "defaults"));

@@ -2,6 +2,7 @@ package com.diamo.cobblemoneconomyplus.admin;
 
 import com.diamo.cobblemoneconomyplus.TestBootstrap;
 import com.diamo.cobblemoneconomyplus.config.ConfigFiles;
+import com.diamo.cobblemoneconomyplus.config.ConfigMessage;
 import com.diamo.cobblemoneconomyplus.shop.ShopDefinition;
 import com.diamo.cobblemoneconomyplus.shop.ShopJson;
 import com.google.gson.JsonObject;
@@ -80,7 +81,7 @@ class AdminTest {
         for (ShopDefinition shop : shops()) {
             ShopDraft.Result result = ShopDraft.of(shop).toJson();
             assertTrue(result.ok());
-            List<String> problems = new ArrayList<>();
+            List<ConfigMessage> problems = new ArrayList<>();
             assertEquals(shop, ShopJson.parseShop(result.json(), problems));
             assertTrue(problems.isEmpty(), problems::toString);
         }
@@ -178,7 +179,7 @@ class AdminTest {
 
     @Test
     void theServerRejectsWhatTheFileLoaderWouldChange() {
-        List<String> problems = new ArrayList<>();
+        List<ConfigMessage> problems = new ArrayList<>();
         ShopJson.parseShop(JsonParser.parseString("""
                 { "id": "x", "theme": "rainbow", "entries": [ { "item": "minecraft:nope", "amount": 1, "price": 1 } ] }
                 """).getAsJsonObject(), problems);

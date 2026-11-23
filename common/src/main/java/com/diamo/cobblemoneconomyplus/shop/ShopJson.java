@@ -1,5 +1,6 @@
 package com.diamo.cobblemoneconomyplus.shop;
 
+import com.diamo.cobblemoneconomyplus.config.ConfigMessage;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
@@ -102,7 +103,7 @@ public final class ShopJson {
      * Parses one shop object exactly like shops.json does, collecting every problem in {@code problems}. Returns null
      * when the shop could not be read at all.
      */
-    public static ShopDefinition parseShop(JsonObject json, List<String> problems) {
+    public static ShopDefinition parseShop(JsonObject json, List<ConfigMessage> problems) {
         try {
             JsonObject root = new JsonObject();
             JsonArray array = new JsonArray();

@@ -2,6 +2,7 @@ package com.diamo.cobblemoneconomyplus.admin;
 
 import com.diamo.cobblemoneconomyplus.CobblemonEconomyPlus;
 import com.diamo.cobblemoneconomyplus.config.ConfigFiles;
+import com.diamo.cobblemoneconomyplus.config.ConfigMessage;
 import com.diamo.cobblemoneconomyplus.network.EconomyPayloads;
 import com.diamo.cobblemoneconomyplus.permission.EconomyPermission;
 import com.diamo.cobblemoneconomyplus.permission.EconomyPermissions;
@@ -69,15 +70,15 @@ public final class AdminService {
             }
             submitted = element.getAsJsonObject();
         } catch (RuntimeException exception) {
-            fail(player, "invalid", exception.getMessage());
+            fail(player, "invalid", ShopManager.describe(exception).component());
             return;
         }
 
-        List<String> problems = new ArrayList<>();
+        List<ConfigMessage> problems = new ArrayList<>();
         ShopDefinition shop = ShopJson.parseShop(submitted, problems);
         if (shop == null || !problems.isEmpty()) {
             // The screen must not save anything the file loader would skip or change.
-            fail(player, "invalid", problems.isEmpty() ? "?" : problems.get(0));
+            fail(player, "invalid", problems.isEmpty() ? "?" : problems.get(0).component());
             return;
         }
         boolean creating = request.originalId().isEmpty();
@@ -217,20 +218,20 @@ public final class AdminService {
         ShopManager.Report report = ShopManager.reload(server);
         if (!report.ok()) {
             // Should not happen (the edit was validated), but never hide it.
-            fail(player, "reload_failed", report.errors().get(0));
+            fail(player, "reload_failed", report.errors().get(0).component());
         }
         ShopService.refreshOpenShops(server);
         return true;
     }
 
-    private static void succeed(ServerPlayer player, String key, String... args) {
+    private static void succeed(ServerPlayer player, String key, Object... args) {
         PlatformNetworking.sendToPlayer(player, new EconomyPayloads.AdminStatusPayload(true,
-                "message.cobblemon_economy_plus.admin." + key, List.of(args)));
+                Component.translatable("message.cobblemon_economy_plus.admin." + key, args)));
         open(player, "");
     }
 
-    private static void fail(ServerPlayer player, String key, String... args) {
+    private static void fail(ServerPlayer player, String key, Object... args) {
         PlatformNetworking.sendToPlayer(player, new EconomyPayloads.AdminStatusPayload(false,
-                "message.cobblemon_economy_plus.admin." + key, List.of(args)));
+                Component.translatable("message.cobblemon_economy_plus.admin." + key, args)));
     }
 }

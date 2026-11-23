@@ -135,7 +135,7 @@ public final class AdminScreen extends Screen {
             // A refused save keeps the edits: the server may now send fresh data (conflict), which must not replace them.
             awaitingSave = false;
         }
-        setStatus(Component.translatable(payload.key(), payload.args().toArray()), payload.success());
+        setStatus(payload.message(), payload.success());
     }
 
     private void setStatus(Component message, boolean ok) {

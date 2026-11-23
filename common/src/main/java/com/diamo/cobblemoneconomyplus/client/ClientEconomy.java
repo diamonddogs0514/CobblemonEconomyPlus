@@ -62,7 +62,7 @@ public final class ClientEconomy {
             screen.showStatus(payload);
         } else if (Minecraft.getInstance().player != null) {
             Minecraft.getInstance().player.displayClientMessage(
-                    net.minecraft.network.chat.Component.translatable(payload.key(), payload.args().toArray()), false);
+                    payload.message(), false);
         }
     }
 

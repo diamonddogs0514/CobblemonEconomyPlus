@@ -1,6 +1,7 @@
 package com.diamo.cobblemoneconomyplus.config;
 
 import com.diamo.cobblemoneconomyplus.CobblemonEconomyPlus;
+import com.diamo.cobblemoneconomyplus.shop.ShopManager;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
@@ -44,8 +45,8 @@ public final class ModConfig {
     public static synchronized ConfigResult reload(MinecraftServer server) {
         boolean firstLoad = loadedFor != server;
         Path path = path(server);
-        List<String> errors = new ArrayList<>();
-        List<String> warnings = new ArrayList<>();
+        List<ConfigMessage> errors = new ArrayList<>();
+        List<ConfigMessage> warnings = new ArrayList<>();
         try {
             if (!Files.exists(path)) {
                 Files.createDirectories(path.getParent());
@@ -59,15 +60,15 @@ public final class ModConfig {
                 settings = Settings.DEFAULTS;
             }
         } catch (IOException exception) {
-            errors.add(FILE_NAME + ": could not read " + path + ": " + exception.getMessage());
+            errors.add(ShopManager.cannotRead(path, exception).inFile(FILE_NAME));
             if (firstLoad) {
                 settings = Settings.DEFAULTS;
             }
         }
         loadedFor = server;
-        warnings.forEach(CobblemonEconomyPlus.LOGGER::warn);
-        for (String error : errors) {
-            CobblemonEconomyPlus.LOGGER.error("Could not load {}. {}", error, firstLoad
+        warnings.forEach(warning -> CobblemonEconomyPlus.LOGGER.warn(warning.text()));
+        for (ConfigMessage error : errors) {
+            CobblemonEconomyPlus.LOGGER.error("Could not load {}. {}", error.text(), firstLoad
                     ? "Using the built-in defaults until it is fixed and reloaded."
                     : "Keeping the previously loaded settings.");
         }
@@ -77,38 +78,37 @@ public final class ModConfig {
     /** Checks config.json without applying it. */
     public static ConfigResult validate(MinecraftServer server) {
         Path path = path(server);
-        List<String> errors = new ArrayList<>();
-        List<String> warnings = new ArrayList<>();
+        List<ConfigMessage> errors = new ArrayList<>();
+        List<ConfigMessage> warnings = new ArrayList<>();
         if (!Files.exists(path)) {
-            errors.add(FILE_NAME + ": file not found (" + path + "); it is created with defaults on the next reload");
+            errors.add(ShopManager.fileNotFound(path).inFile(FILE_NAME));
         } else {
             try {
                 read(Files.readString(path, StandardCharsets.UTF_8), errors, warnings);
             } catch (IOException exception) {
-                errors.add(FILE_NAME + ": could not read " + path + ": " + exception.getMessage());
+                errors.add(ShopManager.cannotRead(path, exception).inFile(FILE_NAME));
             }
         }
         return new ConfigResult(errors, warnings);
     }
 
     /** Parses the file text; returns null (and adds an error) when it cannot be used. Never throws. */
-    static Settings read(String source, List<String> errors, List<String> warnings) {
+    static Settings read(String source, List<ConfigMessage> errors, List<ConfigMessage> warnings) {
         try {
             JsonElement root = JsonParser.parseString(source);
             if (!root.isJsonObject()) {
-                errors.add(FILE_NAME + ": the file must contain a JSON object");
+                errors.add(ConfigMessage.of("root_not_object", "the root JSON value must be an object").inFile(FILE_NAME));
                 return null;
             }
             JsonObject json = root.getAsJsonObject();
             return new Settings(bool(json, "purchase_limits_enabled", Settings.DEFAULTS.purchaseLimitsEnabled(), warnings));
         } catch (JsonParseException exception) {
-            Throwable cause = exception.getCause() != null ? exception.getCause() : exception;
-            errors.add(FILE_NAME + ": invalid JSON (" + cause.getMessage() + ")");
+            errors.add(ShopManager.describe(exception).inFile(FILE_NAME));
             return null;
         }
     }
 
-    private static boolean bool(JsonObject json, String key, boolean fallback, List<String> warnings) {
+    private static boolean bool(JsonObject json, String key, boolean fallback, List<ConfigMessage> warnings) {
         if (!json.has(key)) {
             return fallback;
         }
@@ -116,7 +116,7 @@ public final class ModConfig {
         if (value.isJsonPrimitive() && value.getAsJsonPrimitive().isBoolean()) {
             return value.getAsBoolean();
         }
-        warnings.add(FILE_NAME + ": " + key + " must be true or false; using " + fallback);
+        warnings.add(ConfigMessage.of("not_boolean", "%s must be true or false; using %s", key, fallback).inFile(FILE_NAME));
         return fallback;
     }
 
