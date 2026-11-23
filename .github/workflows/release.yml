@@ -39,6 +39,7 @@ jobs:
       - name: Upload Fabric artifacts
         uses: Kir-Antipov/mc-publish@v3.3
         with:
+          name: ${{ github.event.release.name }} (Fabric)
           modrinth-id: ${{ env.MODRINTH_ID }}
           modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
 
@@ -51,9 +52,10 @@ jobs:
             build/libs_fabric/!(*-@(dev|sources|all)).jar
             build/libs_fabric/*-@(dev|sources|all).jar
 
-      - name: Upload Forge artifacts
+      - name: Upload NeoForge artifacts
         uses: Kir-Antipov/mc-publish@v3.3
         with:
+          name: ${{ github.event.release.name }} (NeoForge)
           modrinth-id: ${{ env.MODRINTH_ID }}
           modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
 
