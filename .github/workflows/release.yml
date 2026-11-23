@@ -4,11 +4,24 @@ on:
   release:
     # Only when a release is published (not on create / edit too), so each version is uploaded once.
     types: [published]
+  # Manual run for an already published release, e.g. to upload one loader again after a failed run.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to build and upload (e.g. v1.2.0)
+        required: true
+      loaders:
+        description: Which loaders to upload
+        type: choice
+        options: [both, fabric, neoforge]
+        default: both
 
 # Publishing to Modrinth and CurseForge needs the repository secrets MODRINTH_TOKEN and CURSEFORGE_TOKEN.
 env:
   MODRINTH_ID: M7XGBo0H
   CURSEFORGE_ID: 1794401
+  RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+  LOADERS: ${{ inputs.loaders || 'both' }}
 
 jobs:
   build:
@@ -18,6 +31,8 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
 
       - name: Validate Gradle Wrapper
         uses: gradle/actions/wrapper-validation@v3
@@ -33,13 +48,20 @@ jobs:
         with:
           cache-read-only: false
 
+      - name: Read the release name
+        id: release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "name=$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json name --jq .name)" >> "$GITHUB_OUTPUT"
+
       - name: Execute Gradle build
         run: ./gradlew build
 
       - name: Upload Fabric artifacts
+        if: env.LOADERS != 'neoforge'
         uses: Kir-Antipov/mc-publish@v3.3
         with:
-          name: ${{ github.event.release.name }} (Fabric)
+          name: ${{ steps.release.outputs.name }} (Fabric)
           # Cobblemon 1.8.4 runs on 1.21.1 only; do not let a version range expand to every 1.21.x.
           game-versions: 1.21.1
           modrinth-id: ${{ env.MODRINTH_ID }}
@@ -48,6 +70,7 @@ jobs:
           curseforge-id: ${{ env.CURSEFORGE_ID }}
           curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
 
+          github-tag: ${{ env.RELEASE_TAG }}
           github-token: ${{ secrets.GITHUB_TOKEN }} # GitHub token is provided by GH automatically
 
           files: |
@@ -55,9 +78,10 @@ jobs:
             build/libs_fabric/*-@(dev|sources|all).jar
 
       - name: Upload NeoForge artifacts
+        if: env.LOADERS != 'fabric'
         uses: Kir-Antipov/mc-publish@v3.3
         with:
-          name: ${{ github.event.release.name }} (NeoForge)
+          name: ${{ steps.release.outputs.name }} (NeoForge)
           # Cobblemon 1.8.4 runs on 1.21.1 only; do not let a version range expand to every 1.21.x.
           game-versions: 1.21.1
           modrinth-id: ${{ env.MODRINTH_ID }}
@@ -66,6 +90,7 @@ jobs:
           curseforge-id: ${{ env.CURSEFORGE_ID }}
           curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
 
+          github-tag: ${{ env.RELEASE_TAG }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
           files: |
