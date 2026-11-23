@@ -1,6 +1,7 @@
 package com.diamo.cobblemoneconomyplus;
 
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
@@ -26,9 +27,14 @@ public final class CobblemonEconomyPlusFabric implements ModInitializer {
         CobblemonEconomyPlus.init();
         EconomyContentFabric.register();
         FabricPermissions.install();
+        if (FabricLoader.getInstance().isModLoaded("placeholder-api")) {
+            FabricPlaceholders.register();
+        }
 
         PlatformNetworking.setServerSender(ServerPlayNetworking::send);
         PayloadTypeRegistry.playS2C().register(EconomyPayloads.BalancePayload.TYPE, EconomyPayloads.BalancePayload.STREAM_CODEC);
+        PayloadTypeRegistry.playS2C().register(EconomyPayloads.TrainerCardPayload.TYPE, EconomyPayloads.TrainerCardPayload.STREAM_CODEC);
+        PayloadTypeRegistry.playS2C().register(EconomyPayloads.DailyLoginPayload.TYPE, EconomyPayloads.DailyLoginPayload.STREAM_CODEC);
         PayloadTypeRegistry.playS2C().register(EconomyPayloads.OpenShopPayload.TYPE, EconomyPayloads.OpenShopPayload.STREAM_CODEC);
         PayloadTypeRegistry.playS2C().register(EconomyPayloads.ShopEntryUpdatePayload.TYPE, EconomyPayloads.ShopEntryUpdatePayload.STREAM_CODEC);
         PayloadTypeRegistry.playC2S().register(EconomyPayloads.ShopActionPayload.TYPE, EconomyPayloads.ShopActionPayload.STREAM_CODEC);

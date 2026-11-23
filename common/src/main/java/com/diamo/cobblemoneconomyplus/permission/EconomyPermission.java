@@ -16,6 +16,8 @@ public enum EconomyPermission {
     PAY("pay", 0),
     /** {@code /cep top} (balance ranking). */
     TOP("top", 0),
+    /** {@code /cep daily} (login bonus calendar; also claims today's bonus if it was not paid yet). */
+    DAILY("daily", 0),
     /** {@code /cep money get|set|add|take}. */
     MONEY("money", 2),
     /** {@code /cep shop reload|list}. */

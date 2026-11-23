@@ -9,7 +9,12 @@ public enum RewardType {
     /** Capturing a Pokémon (alpha or not: see {@link RewardEvent#alpha()}). */
     CAPTURE("capture"),
     /** Reaching a Pokédex milestone (number of species caught: see {@link RewardEvent#milestone()}). */
-    POKEDEX_MILESTONE("pokedex_milestone");
+    POKEDEX_MILESTONE("pokedex_milestone"),
+    /**
+     * The first login of the day ({@link RewardEvent#milestone()} is which login day it is). Changing the amount
+     * changes the coins; cancelling it also withholds the day's items. Since API version 3.
+     */
+    DAILY_LOGIN("daily_login");
 
     private final String id;
 

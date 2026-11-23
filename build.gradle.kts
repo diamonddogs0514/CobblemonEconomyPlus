@@ -27,6 +27,41 @@ subprojects {
             }
         }
 
+        // Optional integrations and the mods Cobblemon Battle Plus needs in development runs.
+        exclusiveContent {
+            forRepository {
+                maven {
+                    name = "Nucleoid"
+                    url = uri("https://maven.nucleoid.xyz/")
+                }
+            }
+            filter {
+                includeGroup("eu.pb4")
+            }
+        }
+        exclusiveContent {
+            forRepository {
+                maven {
+                    name = "Architectury"
+                    url = uri("https://maven.architectury.dev/")
+                }
+            }
+            filter {
+                includeGroup("dev.architectury")
+            }
+        }
+        exclusiveContent {
+            forRepository {
+                maven {
+                    name = "CurseMaven"
+                    url = uri("https://www.cursemaven.com")
+                }
+            }
+            filter {
+                includeGroup("curse.maven")
+            }
+        }
+
         exclusiveContent {
             forRepository {
                 maven {

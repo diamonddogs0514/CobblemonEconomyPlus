@@ -43,6 +43,37 @@ dependencies {
 
     // Required at development runtime; not bundled into this add-on's jar.
     modImplementation("maven.modrinth:cobblemon:${rootProject.properties["cobblemon_fabric_version_id"]}")
+
+    // Optional: %cobblemon_economy_plus:...% placeholders when Text Placeholder API is installed.
+    val placeholderApi = "eu.pb4:placeholder-api:${rootProject.properties["placeholder_api_version"]}"
+    modCompileOnly(placeholderApi) { isTransitive = false }
+    modLocalRuntime(placeholderApi) { isTransitive = false }
+
+    // Cobblemon Battle Plus for testing the Trainer Card integration (see gradle.properties).
+    val battlePlusJar = newestBattlePlusJar("fabric")
+    if (battlePlusJar != null) {
+        logger.lifecycle("Development runs use Cobblemon Battle Plus: ${battlePlusJar.name}")
+        modLocalRuntime(files(battlePlusJar))
+        listOf(
+            "dev.architectury:architectury-fabric:${rootProject.properties["battle_plus_architectury_version"]}",
+            "curse.maven:radical-cobblemon-trainers-api-1152792:${rootProject.properties["battle_plus_rctapi_fabric_file_id"]}",
+            "me.lucko:fabric-permissions-api:${rootProject.properties["battle_plus_fabric_permissions_api_version"]}",
+        ).forEach { modLocalRuntime(it) { isTransitive = false } }
+    }
+}
+
+/** The newest Cobblemon Battle Plus jar built in battle_plus_dir, or null when disabled or not built. */
+fun newestBattlePlusJar(loader: String): File? {
+    if (!rootProject.properties["dev_battle_plus"].toString().toBoolean()) {
+        return null
+    }
+    val dir = rootProject.file(rootProject.properties["battle_plus_dir"].toString()).resolve("build/libs_$loader")
+    val jar = dir.listFiles { file -> Regex("cobblemonbattleplus-$loader-[0-9.]+-[0-9.]+\\.jar").matches(file.name) }
+        ?.maxByOrNull { it.lastModified() }
+    if (jar == null) {
+        logger.warn("No Cobblemon Battle Plus jar in $dir; development runs start without it")
+    }
+    return jar
 }
 
 loom {

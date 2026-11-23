@@ -112,6 +112,10 @@ public final class EconomyCommands {
                                 )
                         )
                 )
+                .then(Commands.literal("daily")
+                        .requires(source -> EconomyPermissions.has(source, EconomyPermission.DAILY))
+                        .executes(context -> openDaily(context.getSource()))
+                )
                 .then(Commands.literal("top")
                         .requires(source -> EconomyPermissions.has(source, EconomyPermission.TOP))
                         .executes(context -> showTop(context.getSource(), 1))
@@ -338,6 +342,16 @@ public final class EconomyCommands {
         return 1;
     }
 
+    // ------------------------------------------------------------------ daily
+
+    private static int openDaily(CommandSourceStack source) throws CommandSyntaxException {
+        if (!com.diamo.cobblemoneconomyplus.reward.RewardService.openDailyLogin(source.getPlayerOrException())) {
+            source.sendFailure(Component.translatable("command.cobblemon_economy_plus.daily_disabled"));
+            return 0;
+        }
+        return 1;
+    }
+
     // ------------------------------------------------------------------ top
 
     private static int showTop(CommandSourceStack source, int page) {
@@ -384,7 +398,7 @@ public final class EconomyCommands {
     }
 
     /** The player's name: online, then the server's name cache (usercache.json), else a shortened UUID. */
-    private static String playerName(MinecraftServer server, UUID playerId) {
+    public static String playerName(MinecraftServer server, UUID playerId) {
         ServerPlayer online = server.getPlayerList().getPlayer(playerId);
         if (online != null) {
             return online.getGameProfile().getName();

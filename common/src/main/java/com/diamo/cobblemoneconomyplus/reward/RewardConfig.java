@@ -5,7 +5,9 @@ import com.diamo.cobblemoneconomyplus.config.ConfigMessage;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import net.minecraft.resources.ResourceLocation;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -25,7 +27,8 @@ public record RewardConfig(
         Formula capture,
         Formula captureAlpha,
         boolean pokedexEnabled,
-        NavigableMap<Integer, Long> milestones
+        NavigableMap<Integer, Long> milestones,
+        DailyLogin dailyLogin
 ) {
     /** Upper bound for any single number in the file, so a typo cannot pay absurd amounts. */
     static final long MAX_AMOUNT = 1_000_000_000L;
@@ -46,9 +49,91 @@ public record RewardConfig(
                   "300": 15000, "400": 20000, "500": 25000, "600": 30000, "700": 35000,
                   "800": 40000, "900": 45000, "1000": 50000
                 }
+              },
+              "daily_login": {
+                "enabled": true,
+                "show_screen": true,
+                "reset_on_miss": true,
+                "repeat": true,
+                "days": [
+                  { "coins": 100 },
+                  { "coins": 150 },
+                  { "coins": 200, "items": [ { "item": "cobblemon:poke_ball", "count": 5 } ] },
+                  { "coins": 250 },
+                  { "coins": 300, "items": [ { "item": "cobblemon:great_ball", "count": 5 } ] },
+                  { "coins": 400 },
+                  { "coins": 500, "items": [ { "item": "cobblemon:ultra_ball", "count": 3 },
+                                             { "item": "cobblemon:rare_candy", "count": 1 } ] },
+
+                  { "coins": 150 },
+                  { "coins": 200 },
+                  { "coins": 250, "items": [ { "item": "cobblemon:great_ball", "count": 5 } ] },
+                  { "coins": 300 },
+                  { "coins": 350, "items": [ { "item": "cobblemon:super_potion", "count": 3 } ] },
+                  { "coins": 450 },
+                  { "coins": 600, "items": [ { "item": "cobblemon:ultra_ball", "count": 5 },
+                                             { "item": "cobblemon:exp_candy_m", "count": 3 } ] },
+
+                  { "coins": 200 },
+                  { "coins": 250 },
+                  { "coins": 300, "items": [ { "item": "cobblemon:ultra_ball", "count": 3 } ] },
+                  { "coins": 350 },
+                  { "coins": 400, "items": [ { "item": "cobblemon:hyper_potion", "count": 3 } ] },
+                  { "coins": 500 },
+                  { "coins": 700, "items": [ { "item": "cobblemon:exp_candy_l", "count": 3 },
+                                             { "item": "cobblemon:rare_candy", "count": 2 } ] },
+
+                  { "coins": 250 },
+                  { "coins": 300 },
+                  { "coins": 350, "items": [ { "item": "cobblemon:ultra_ball", "count": 5 } ] },
+                  { "coins": 400 },
+                  { "coins": 450, "items": [ { "item": "cobblemon:max_revive", "count": 2 } ] },
+                  { "coins": 600 },
+                  { "coins": 1000, "items": [ { "item": "cobblemon:rare_candy", "count": 5 },
+                                              { "item": "cobblemon:ability_capsule", "count": 1 } ] }
+                ]
               }
             }
             """;
+
+    /** Limits for the login bonus calendar, so a typo cannot make a huge screen or packet. */
+    static final int MAX_LOGIN_DAYS = 60;
+    static final int MAX_ITEMS_PER_DAY = 8;
+    static final int MAX_ITEM_COUNT = 6400;
+
+    /** One item of a login bonus day. The id is checked against the item registry when the file is loaded. */
+    public record LoginItem(ResourceLocation item, int count) {
+    }
+
+    /** What one day of the login bonus pays. */
+    public record LoginDay(long coins, List<LoginItem> items) {
+        public LoginDay {
+            items = List.copyOf(items);
+        }
+    }
+
+    /**
+     * The daily login bonus: the first login of each day pays the next entry of {@code days}.
+     *
+     * @param showScreen  open the bonus calendar on the player's screen when it is paid
+     * @param resetOnMiss missing a day starts again from the first day (otherwise every login day counts)
+     * @param repeat      after the last day, start again from the first (otherwise keep paying the last day)
+     */
+    public record DailyLogin(boolean enabled, boolean showScreen, boolean resetOnMiss, boolean repeat,
+                             List<LoginDay> days) {
+        public DailyLogin {
+            days = List.copyOf(days);
+        }
+
+        /** The 0-based entry of {@code days} for the {@code count}-th login day (1 = first), or -1 when empty. */
+        public int dayIndex(int count) {
+            if (days.isEmpty()) {
+                return -1;
+            }
+            int n = Math.max(1, count);
+            return repeat ? (n - 1) % days.size() : Math.min(n, days.size()) - 1;
+        }
+    }
 
     /** {@code base + level × perLevel} coins, or nothing when disabled. */
     public record Formula(boolean enabled, long base, long perLevel) {
@@ -104,8 +189,95 @@ public record RewardConfig(
                 formula(json, defaults, "capture", warnings),
                 formula(json, defaults, "capture_alpha", warnings),
                 dex == null || bool(dex, "enabled", true, "pokedex_milestones.", warnings),
-                milestones
+                milestones,
+                dailyLogin(json, defaults, warnings)
         );
+    }
+
+    private static DailyLogin dailyLogin(JsonObject json, JsonObject defaults, List<ConfigMessage> warnings) {
+        JsonObject fallback = defaults.getAsJsonObject("daily_login");
+        JsonObject section = object(json, "daily_login", warnings);
+        if (section == null) {
+            section = fallback;
+        }
+        String prefix = "daily_login.";
+        List<LoginDay> days = section.has("days") ? loginDays(section.get("days"), warnings) : null;
+        if (days == null) {
+            days = loginDays(fallback.get("days"), new ArrayList<>());
+        }
+        return new DailyLogin(
+                bool(section, "enabled", true, prefix, warnings),
+                bool(section, "show_screen", true, prefix, warnings),
+                bool(section, "reset_on_miss", true, prefix, warnings),
+                bool(section, "repeat", true, prefix, warnings),
+                days);
+    }
+
+    /** The days of the login bonus, or null (with a warning) when the list itself is unusable. */
+    private static List<LoginDay> loginDays(JsonElement element, List<ConfigMessage> warnings) {
+        if (!element.isJsonArray() || element.getAsJsonArray().isEmpty()
+                || element.getAsJsonArray().size() > MAX_LOGIN_DAYS) {
+            warnings.add(ConfigMessage.of("login_days_invalid",
+                    "daily_login.days must be a list of 1 to %s days; using the default days", MAX_LOGIN_DAYS));
+            return null;
+        }
+        List<LoginDay> days = new ArrayList<>();
+        int number = 0;
+        for (JsonElement dayElement : element.getAsJsonArray()) {
+            number++;
+            if (!dayElement.isJsonObject()) {
+                warnings.add(ConfigMessage.of("login_day_invalid",
+                        "daily_login.days: day %s must be an object like { \"coins\": 100 }; it pays nothing", number));
+                days.add(new LoginDay(0L, List.of()));
+                continue;
+            }
+            JsonObject day = dayElement.getAsJsonObject();
+            long coins = amount(day, "coins", 0L, "daily_login.days[" + number + "].", warnings);
+            List<LoginItem> items = new ArrayList<>();
+            if (day.has("items")) {
+                JsonElement itemsElement = day.get("items");
+                if (!itemsElement.isJsonArray()) {
+                    warnings.add(ConfigMessage.of("login_items_not_list",
+                            "daily_login.days: the items of day %s must be a list; no items that day", number));
+                } else {
+                    for (JsonElement itemElement : itemsElement.getAsJsonArray()) {
+                        if (items.size() == MAX_ITEMS_PER_DAY) {
+                            warnings.add(ConfigMessage.of("login_too_many_items",
+                                    "daily_login.days: day %s has more than %s items; the rest are skipped",
+                                    number, MAX_ITEMS_PER_DAY));
+                            break;
+                        }
+                        LoginItem item = loginItem(itemElement);
+                        if (item == null) {
+                            warnings.add(ConfigMessage.of("login_item_invalid",
+                                    "daily_login.days: an item of day %s needs an \"item\" id and a \"count\" from 1 to %s; skipped",
+                                    number, MAX_ITEM_COUNT));
+                        } else {
+                            items.add(item);
+                        }
+                    }
+                }
+            }
+            days.add(new LoginDay(coins, items));
+        }
+        return days;
+    }
+
+    private static LoginItem loginItem(JsonElement element) {
+        if (!element.isJsonObject()) {
+            return null;
+        }
+        JsonObject json = element.getAsJsonObject();
+        JsonElement id = json.get("item");
+        if (id == null || !id.isJsonPrimitive() || !id.getAsJsonPrimitive().isString()) {
+            return null;
+        }
+        ResourceLocation item = ResourceLocation.tryParse(id.getAsString().trim());
+        Long count = json.has("count") ? number(json.get("count")) : Long.valueOf(1L);
+        if (item == null || count == null || count < 1 || count > MAX_ITEM_COUNT) {
+            return null;
+        }
+        return new LoginItem(item, count.intValue());
     }
 
     private static Formula formula(JsonObject json, JsonObject defaults, String key, List<ConfigMessage> warnings) {

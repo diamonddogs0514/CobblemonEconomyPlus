@@ -10,6 +10,7 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RenderGuiEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 
@@ -37,7 +38,8 @@ public final class CobblemonEconomyPlusNeoForgeClient {
                 ClientPayloadBridge.setOpenShopHandler(ClientEconomy::handleOpenShop);
                 ClientPayloadBridge.setEntryUpdateHandler(ClientEconomy::handleEntryUpdate);
                 ClientPayloadBridge.setAdminHandlers(ClientEconomy::handleAdminOpen, ClientEconomy::handleAdminStatus);
-                ClientPayloadBridge.setOpenCardHandler(ClientEconomy::openTrainerCard);
+                ClientPayloadBridge.setTrainerCardHandler(ClientEconomy::openTrainerCard);
+                ClientPayloadBridge.setDailyLoginHandler(ClientEconomy::handleDailyLogin);
             });
         }
 
@@ -55,6 +57,11 @@ public final class CobblemonEconomyPlusNeoForgeClient {
         @SubscribeEvent
         public static void renderHud(RenderGuiEvent.Post event) {
             CurrencyHud.render(event.getGuiGraphics());
+        }
+
+        @SubscribeEvent
+        public static void clientTick(ClientTickEvent.Post event) {
+            ClientEconomy.clientTick();
         }
     }
 }

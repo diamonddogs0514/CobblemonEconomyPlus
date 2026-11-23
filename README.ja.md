@@ -16,6 +16,9 @@ Cobblemon に経済の仕組みを加える、Minecraft 1.21.1 向けの Mod で
 - NPC に話しかけて開く**ショップ画面**: 買う / 売る、カテゴリ切替、数量指定、11種類のデザイン(テーマ)
 - 売却: 管理者が登録した「基準額」に、ショップごとの**倍率**を掛けた価格でアイテムを買い取ります
 - **Cobblemon の報酬**: 野生・トレーナーとのバトルの勝利(親分は増額)、捕獲、図鑑の節目でコインがもらえます(それぞれ切り替え可能)
+- カレンダー画面つきの**ログインボーナス**(日ごとのコイン・アイテムを自由に設定可能)
+- 図鑑の数・プレイ時間・所持金の順位・所持金を表示する**トレーナーカード**(Cobblemon Battle Plus があればバトルポイントも)
+- スコアボード・タブリスト・ホログラム向けの**プレースホルダー**(Fabric、Text Placeholder API が必要)
 - 商品ごとの**購入制限と在庫**: プレイヤーごとに毎日 / 毎週 / 1回きりの上限、全員で共有して時間で補充される在庫
 - ファイルを直接編集せずに、ショップ・商品・売却価格を編集できる**管理画面**(ゲーム内)
 - 所持金の**ランキング**(`/cep top`)
@@ -36,7 +39,9 @@ Cobblemon に経済の仕組みを加える、Minecraft 1.21.1 向けの Mod で
   - `B` キー(コントロール設定で変更可)を押している間は、いつでも表示します。
   - `Shift + B` で表示モードが「変動時のみ」→「常に表示」→「非表示」と切り替わります(設定は
     `config/cobblemon_economy_plus_client.json` に保存されます)。
-- **トレーナーカード**(クリエイティブタブのアイテム・下書き): 右クリックで所持金などのカードを開きます。
+- **トレーナーカード**(クリエイティブタブのアイテム): 右クリックでカードを開きます。図鑑に登録した種類の数、
+  プレイ時間、所持金ランキング(`/cep top`)での順位、所持金が表示されます。サーバーに Cobblemon Battle Plus
+  (3.0.0 以降)が入っていれば、バトルポイントも表示されます。
 
 ## コマンド
 
@@ -45,6 +50,7 @@ Cobblemon に経済の仕組みを加える、Minecraft 1.21.1 向けの Mod で
 | `/cep balance` | 自分の所持金を確認 | `cobblemon_economy_plus.balance`(全員) |
 | `/cep balance <player>` | 他のプレイヤーの所持金を確認 | `cobblemon_economy_plus.balance.others`(OP2) |
 | `/cep pay <player> <amount>`、`/pay <player> <amount>` | 送金 | `cobblemon_economy_plus.pay`(全員) |
+| `/cep daily` | ログインボーナスのカレンダーを表示。今日の分をまだ受け取っていなければ(0 時をまたいでログインしたままなど)ここで受け取れる | `cobblemon_economy_plus.daily`(全員) |
 | `/cep top [ページ]` | 所持金ランキング(1 ページ 10 人、自分の順位も表示。オフラインのプレイヤーも含む) | `cobblemon_economy_plus.top`(全員) |
 | `/cep money get <player>` | 所持金を確認 | `cobblemon_economy_plus.money`(OP2) |
 | `/cep money set <players> <amount>` | 所持金を設定 | 同上 |
@@ -152,6 +158,7 @@ Cobblemon に経済の仕組みを加える、Minecraft 1.21.1 向けの Mod で
 | 捕獲 | `capture` | 5 + レベル × 1 |
 | 捕獲(親分) | `capture_alpha` | 50 + レベル × 3 |
 | 図鑑の節目(捕まえた種類の数) | `pokedex_milestones` | 10 種で 500 〜 1000 種で 50,000(下の例) |
+| ログインボーナス(1.2.0 以降) | `daily_login` | 4 週間(28 日)の日程: 100〜1,000 コイン、週の途中にボールや薬、7 日ごとにアメなど大きめの報酬(下の例) |
 
 ```json
 {
@@ -169,7 +176,8 @@ Cobblemon に経済の仕組みを加える、Minecraft 1.21.1 向けの Mod で
       "300": 15000, "400": 20000, "500": 25000, "600": 30000, "700": 35000,
       "800": 40000, "900": 45000, "1000": 50000
     }
-  }
+  },
+  "daily_login": { ... 下の「ログインボーナス」を参照 ... }
 }
 ```
 
@@ -182,6 +190,39 @@ Cobblemon に経済の仕組みを加える、Minecraft 1.21.1 向けの Mod で
 - タグ `cep_no_reward` の付いた NPC は、勝ってもトレーナーの報酬が出ません(例: `/tag @e[type=cobblemon:npc,limit=1,sort=nearest] add cep_no_reward`)。
 - 何度でも戦える NPC がいるサーバーでは、`daily_cap` か `cep_no_reward` で稼ぎすぎを防いでください。
 - 他の Mod は、報酬を払う前に取り消したり金額を変えたりできます(下の「イベント」)。
+
+#### ログインボーナス(1.2.0 以降)
+
+その日(サーバーの時刻)の最初のログインで、設定した日程の次の日の報酬を渡します。日ごとにコイン・アイテム・
+その両方を設定できます。既定は 4 週間(28 日)分です。受け取ると、全部の日の報酬が並んだカレンダー画面が開き、受け取った日にはチェック、
+今日の分は強調して表示されます。プレイヤーは `/cep daily` でいつでも見直せます。下の例は、既定の日程の最初の 1 週間です。
+
+```json
+"daily_login": {
+  "enabled": true,
+  "show_screen": true,
+  "reset_on_miss": true,
+  "repeat": true,
+  "days": [
+    { "coins": 100 },
+    { "coins": 150 },
+    { "coins": 200, "items": [ { "item": "cobblemon:poke_ball", "count": 5 } ] },
+    { "coins": 250 },
+    { "coins": 300, "items": [ { "item": "cobblemon:great_ball", "count": 5 } ] },
+    { "coins": 400 },
+    { "coins": 500, "items": [ { "item": "cobblemon:ultra_ball", "count": 3 },
+                               { "item": "cobblemon:rare_candy", "count": 1 } ] }
+  ]
+}
+```
+
+- `days`: 1〜60 日分。1 日ごとに `coins`(省略可)と `items`(省略可、8 個まで。`count` は 1〜6400、省略すると 1)。
+  他の Mod のアイテムも指定できます。存在しない ID は `/cep shop reload` と `validate` で報告され、渡されません。
+- `reset_on_miss`: `true` = 1 日でも空くと 1 日目からやり直し。`false` = 空いても、ログインした日を順に数えます。
+- `repeat`: `true` = 最後の日の次は 1 日目に戻る。`false` = 最後の日の報酬をずっと渡します。
+- `show_screen`: 受け取ったときにカレンダー画面を開く(`false` ならチャットのメッセージだけ。`/cep daily` は使えます)。
+- 持ちきれないアイテムは足元に落とします。`daily_cap` には含まれません。
+- 渡すのはログインしたときです。0 時をまたいでログインしたままの人は、`/cep daily`(または次のログイン)で受け取れます。
 
 ### 管理画面(1.1.0 以降)
 
@@ -247,10 +288,26 @@ NPC ごとに上書きもできます。**ショップエディター**(クリ�
 ゲーム内からは `/cep history <player> [件数]` で、特定のプレイヤーの直近の取引を確認できます(オフラインのプレイヤー名も可)。
 プレイヤー名の欄は、記録した時にそのプレイヤーがオンラインだった場合だけ入ります。名前で見つからないときは UUID(サーバーフォルダの `usercache.json` で調べられます)で検索してください。
 
+### プレースホルダー(Fabric、1.2.0 以降)
+
+[Text Placeholder API](https://modrinth.com/mod/placeholder-api) を入れると、それに対応した Mod(スコアボード、
+タブリスト、チャットの書式、ホログラムなど)で次の値を表示できます。
+
+| プレースホルダー | 表示される内容 |
+|---|---|
+| `%cobblemon_economy_plus:balance%` | そのプレイヤーの所持金(`1,234`) |
+| `%cobblemon_economy_plus:balance_raw%` | 同じ値を区切りなしの数字で(`1234`) |
+| `%cobblemon_economy_plus:rank%` | `/cep top` での順位(所持金 0 のときは `-`) |
+| `%cobblemon_economy_plus:top_name 1%` | `/cep top` の 1 位の名前(数字を変えれば何位でも) |
+| `%cobblemon_economy_plus:top_balance 1%` | その人の所持金 |
+
+`rank` と `top_*` のランキングは数秒ごとに更新されます。NeoForge には共通のプレースホルダー Mod がないため、
+Fabric のみ対応です。
+
 ### 保存データ
 
 残高はワールドのデータ(`data/cobblemon_economy_plus_balances.dat`)に UUID 単位で保存されます。
-報酬の記録(受け取り済みの図鑑の節目、その日の報酬の合計)は `data/cobblemon_economy_plus_rewards.dat` に保存されます。
+報酬の記録(受け取り済みの図鑑の節目、その日の報酬の合計、連続ログイン日数)は `data/cobblemon_economy_plus_rewards.dat` に保存されます。
 購入数と在庫は `data/cobblemon_economy_plus_purchases.dat` に保存されます。
 データ形式に版番号を持たせてあり、将来の更新で既存のワールドを移行できるようにしています。
 **更新前にワールドのバックアップを取ってください。**
@@ -288,6 +345,8 @@ CobblemonEconomyApi.onReward(event -> {
 
 - リスナーは Mod の初期化時に 1 回だけ登録してください。サーバースレッドで呼ばれます。例外を出したリスナーは、ログに出して飛ばします。
 - `RewardEvent` からは、報酬の種類・プレイヤー・金額・親分かどうか・レベル・バトルの ID・トレーナー NPC(トレーナー戦のとき)を取れます。
+- 1.2.0(`API_VERSION >= 3`)で報酬の種類 `DAILY_LOGIN` が増えました。`milestone()` が何日目のログインか、金額がその日の
+  コインです。取り消すと、その日のアイテムも渡されません。
 
 ### 任意の依存にする
 
@@ -306,6 +365,11 @@ JDK 21 が必要です。
 ```
 
 出力先: Fabric は `build/libs_fabric/`、NeoForge は `build/libs_neoforge/`。
+
+開発用の起動(runClient など)では、トレーナーカードの連携を確かめるために Cobblemon Battle Plus も読み込みます。
+隣のフォルダ `../cobblemonbattleplus` でビルドした一番新しい jar を使うので、先にそちらをビルドしてください。
+Battle Plus なしで起動するときは `-Pdev_battle_plus=false` を付けます(`gradle.properties` 参照)。Fabric では
+Text Placeholder API も読み込みます。
 
 ### ローカルでのマルチプレイ確認
 

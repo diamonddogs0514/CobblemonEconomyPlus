@@ -8,6 +8,7 @@ import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -52,6 +53,101 @@ public final class EconomyPayloads {
 
         @Override
         public Type<BalancePayload> type() {
+            return TYPE;
+        }
+    }
+
+    /**
+     * Opens the Trainer Card with the server-side stats: Pokédex species caught, play time in ticks, and the balance
+     * rank ({@code 0} when the player has no coins and so is not ranked) out of {@code rankedPlayers}.
+     */
+    public record TrainerCardPayload(int caughtSpecies, long playTicks, int rank, int rankedPlayers)
+            implements CustomPacketPayload {
+        public static final Type<TrainerCardPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(
+                CobblemonEconomyPlus.MOD_ID, "trainer_card"
+        ));
+        public static final StreamCodec<RegistryFriendlyByteBuf, TrainerCardPayload> STREAM_CODEC = StreamCodec.of(
+                (buffer, payload) -> {
+                    buffer.writeVarInt(payload.caughtSpecies);
+                    buffer.writeVarLong(payload.playTicks);
+                    buffer.writeVarInt(payload.rank);
+                    buffer.writeVarInt(payload.rankedPlayers);
+                },
+                buffer -> new TrainerCardPayload(Math.max(0, buffer.readVarInt()), Math.max(0L, buffer.readVarLong()),
+                        Math.max(0, buffer.readVarInt()), Math.max(0, buffer.readVarInt()))
+        );
+
+        @Override
+        public Type<TrainerCardPayload> type() {
+            return TYPE;
+        }
+    }
+
+    /** One day of the login bonus calendar, as shown to the player. */
+    public record DailyLoginDay(long coins, List<ItemStack> items) {
+        public DailyLoginDay {
+            items = List.copyOf(items);
+        }
+    }
+
+    /**
+     * Opens the login bonus calendar. {@code todayIndex} is today's entry of {@code days}; {@code loginCount} is
+     * which login day today is (consecutive days when {@code resetOnMiss}); {@code claimedNow} is true when today's
+     * bonus was paid just now (false when it was already paid earlier today).
+     */
+    public record DailyLoginPayload(List<DailyLoginDay> days, int todayIndex, int loginCount, boolean resetOnMiss,
+                                    boolean claimedNow) implements CustomPacketPayload {
+        private static final int MAX_DAYS = 60;
+        private static final int MAX_ITEMS = 8;
+
+        public static final Type<DailyLoginPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(
+                CobblemonEconomyPlus.MOD_ID, "daily_login"
+        ));
+        public static final StreamCodec<RegistryFriendlyByteBuf, DailyLoginPayload> STREAM_CODEC = StreamCodec.of(
+                (buffer, payload) -> {
+                    buffer.writeVarInt(payload.days.size());
+                    for (DailyLoginDay day : payload.days) {
+                        buffer.writeVarLong(day.coins());
+                        buffer.writeVarInt(day.items().size());
+                        for (ItemStack stack : day.items()) {
+                            ItemStack.OPTIONAL_STREAM_CODEC.encode(buffer, stack);
+                        }
+                    }
+                    buffer.writeVarInt(payload.todayIndex);
+                    buffer.writeVarInt(payload.loginCount);
+                    buffer.writeBoolean(payload.resetOnMiss);
+                    buffer.writeBoolean(payload.claimedNow);
+                },
+                buffer -> {
+                    int dayCount = buffer.readVarInt();
+                    if (dayCount < 0 || dayCount > MAX_DAYS) {
+                        throw new IllegalArgumentException("Too many login bonus days: " + dayCount);
+                    }
+                    List<DailyLoginDay> days = new ArrayList<>(dayCount);
+                    for (int day = 0; day < dayCount; day++) {
+                        long coins = Math.max(0L, buffer.readVarLong());
+                        int itemCount = buffer.readVarInt();
+                        if (itemCount < 0 || itemCount > MAX_ITEMS) {
+                            throw new IllegalArgumentException("Too many login bonus items: " + itemCount);
+                        }
+                        List<ItemStack> items = new ArrayList<>(itemCount);
+                        for (int item = 0; item < itemCount; item++) {
+                            items.add(ItemStack.OPTIONAL_STREAM_CODEC.decode(buffer));
+                        }
+                        days.add(new DailyLoginDay(coins, items));
+                    }
+                    return new DailyLoginPayload(days, buffer.readVarInt(), Math.max(1, buffer.readVarInt()),
+                            buffer.readBoolean(), buffer.readBoolean());
+                }
+        );
+
+        public DailyLoginPayload {
+            days = List.copyOf(days);
+            todayIndex = days.isEmpty() ? 0 : Math.max(0, Math.min(todayIndex, days.size() - 1));
+        }
+
+        @Override
+        public Type<DailyLoginPayload> type() {
             return TYPE;
         }
     }

@@ -16,6 +16,10 @@ mainly for multiplayer servers.
 - A **shop screen** opened by right-clicking an NPC: buy / sell, category pager, quantity picker, 11 visual themes.
 - **Selling:** items are bought back at an admin-defined *base value* multiplied by a per-shop *multiplier*.
 - **Cobblemon rewards:** coins for winning wild and trainer battles (more for alphas), captures and Pokédex milestones, each switchable.
+- A **daily login bonus** with a calendar screen: coins and items for each day, all configurable.
+- A **Trainer Card** with your Pokédex count, play time, balance rank and balance (and Battle Points with
+  Cobblemon Battle Plus).
+- **Placeholders** for scoreboards, tab lists and holograms (Fabric, with Text Placeholder API).
 - **Purchase limits and stock** per item: daily / weekly / once per player, and shared stock that restocks over time.
 - An **in-game admin screen** to edit shops, items and sell values without touching the files.
 - A **balance ranking** (`/cep top`).
@@ -37,7 +41,10 @@ mainly for multiplayer servers.
   - Hold `B` (rebindable in Controls) to show it at any time.
   - `Shift + B` cycles the display mode: *on change* → *always* → *hidden* (saved in
     `config/cobblemon_economy_plus_client.json`).
-- **Trainer Card** (creative-tab item, draft): right-click to open a card with your balance.
+- **Trainer Card** (creative-tab item): right-click to open your card. It shows the number of species in your
+  Pokédex, your play time, your place in the balance ranking (`/cep top`) and your balance. With
+  Cobblemon Battle Plus (3.0.0 or newer) installed on the server it also shows your
+  Battle Points.
 
 ## Commands
 
@@ -46,6 +53,7 @@ mainly for multiplayer servers.
 | `/cep balance` | Show your own balance | `cobblemon_economy_plus.balance` (everyone) |
 | `/cep balance <player>` | Show someone else's balance | `cobblemon_economy_plus.balance.others` (OP 2) |
 | `/cep pay <player> <amount>`, `/pay <player> <amount>` | Pay another player | `cobblemon_economy_plus.pay` (everyone) |
+| `/cep daily` | Show the login bonus calendar; also pays today's bonus if you have not received it yet (e.g. you stayed online past midnight) | `cobblemon_economy_plus.daily` (everyone) |
 | `/cep top [page]` | Balance ranking, 10 players per page, with your own rank (offline players included) | `cobblemon_economy_plus.top` (everyone) |
 | `/cep money get <player>` | Show a balance | `cobblemon_economy_plus.money` (OP 2) |
 | `/cep money set <players> <amount>` | Set balances | same |
@@ -154,6 +162,7 @@ the hotbar (action bar) and logged with a reason such as `reward:wild_battle`.
 | Capture | `capture` | 5 + level × 1 |
 | Capture (alpha) | `capture_alpha` | 50 + level × 3 |
 | Pokédex milestones (species caught) | `pokedex_milestones` | 500 at 10 species up to 50,000 at 1000 (see below) |
+| Daily login bonus (1.2.0+) | `daily_login` | A 4-week calendar: 100 to 1,000 coins, balls and medicine mid-week, candies and a bigger prize every 7th day (see below) |
 
 ```json
 {
@@ -171,7 +180,8 @@ the hotbar (action bar) and logged with a reason such as `reward:wild_battle`.
       "300": 15000, "400": 20000, "500": 25000, "600": 30000, "700": 35000,
       "800": 40000, "900": 45000, "1000": 50000
     }
-  }
+  },
+  "daily_login": { ... see "Daily login bonus" below ... }
 }
 ```
 
@@ -185,6 +195,41 @@ the hotbar (action bar) and logged with a reason such as `reward:wild_battle`.
 - NPCs with the tag `cep_no_reward` pay no trainer reward (e.g. `/tag @e[type=cobblemon:npc,limit=1,sort=nearest] add cep_no_reward`).
 - If your server has NPCs that can be battled again and again, use `daily_cap` or `cep_no_reward` to prevent farming.
 - Other mods can cancel a reward or change its amount before it is paid (see *Events* below).
+
+#### Daily login bonus (1.2.0+)
+
+The first login of each day (server time) pays the next day of a calendar you define. Each day can pay coins, items,
+or both; the default is four weeks (28 days). A calendar screen then shows every day's rewards, ticks off the days already received and highlights today;
+players can open it again with `/cep daily`. The example shows the first week of the default calendar:
+
+```json
+"daily_login": {
+  "enabled": true,
+  "show_screen": true,
+  "reset_on_miss": true,
+  "repeat": true,
+  "days": [
+    { "coins": 100 },
+    { "coins": 150 },
+    { "coins": 200, "items": [ { "item": "cobblemon:poke_ball", "count": 5 } ] },
+    { "coins": 250 },
+    { "coins": 300, "items": [ { "item": "cobblemon:great_ball", "count": 5 } ] },
+    { "coins": 400 },
+    { "coins": 500, "items": [ { "item": "cobblemon:ultra_ball", "count": 3 },
+                               { "item": "cobblemon:rare_candy", "count": 1 } ] }
+  ]
+}
+```
+
+- `days`: 1 to 60 days. Each day has `coins` (optional) and `items` (optional, up to 8; `count` 1–6400, default 1).
+  Any item id works, including other mods' items. Unknown ids are reported by `/cep shop reload` and `validate` and
+  are not given.
+- `reset_on_miss`: `true` = missing a day starts again from day 1; `false` = every login day counts, gaps or not.
+- `repeat`: `true` = after the last day, start again from day 1; `false` = keep paying the last day.
+- `show_screen`: open the calendar when the bonus is paid (`false` = only the chat message; `/cep daily` still works).
+- Items that do not fit the inventory are dropped at the player's feet. The bonus does not count towards `daily_cap`.
+- It is paid when the player joins. A player who stays online past midnight can get it with `/cep daily` (or at their
+  next login).
 
 ### Admin screen (1.1.0+)
 
@@ -251,10 +296,26 @@ The file rotates to `transactions.log.1`–`.5` once it exceeds 8 MB.
 In game, `/cep history <player> [count]` shows a player's latest transactions (offline player names work too).
 The player-name column is only filled when that player was online at the time; if a name search finds nothing, search by UUID (look it up in `usercache.json` in the server folder).
 
+### Placeholders (Fabric, 1.2.0+)
+
+With [Text Placeholder API](https://modrinth.com/mod/placeholder-api) installed, mods that use it (scoreboards, tab
+lists, chat formats, holograms) can show:
+
+| Placeholder | Shows |
+|---|---|
+| `%cobblemon_economy_plus:balance%` | The player's balance (`1,234`) |
+| `%cobblemon_economy_plus:balance_raw%` | The same as a plain number (`1234`) |
+| `%cobblemon_economy_plus:rank%` | The player's place in `/cep top` (`-` with no coins) |
+| `%cobblemon_economy_plus:top_name 1%` | The name of the 1st player in `/cep top` (any position) |
+| `%cobblemon_economy_plus:top_balance 1%` | Their balance |
+
+The ranking behind `rank` and `top_*` is refreshed every few seconds. NeoForge has no common placeholder mod, so
+these are Fabric only.
+
 ### Saved data
 
 Balances are stored per UUID in the world data (`data/cobblemon_economy_plus_balances.dat`).
-Reward bookkeeping (Pokédex milestones already paid, today's reward total) is in `data/cobblemon_economy_plus_rewards.dat`.
+Reward bookkeeping (Pokédex milestones already paid, today's reward total, login streak) is in `data/cobblemon_economy_plus_rewards.dat`.
 Purchase counts and stock are in `data/cobblemon_economy_plus_purchases.dat`.
 The format carries a version number so future updates can migrate existing worlds.
 **Back up your world before updating.**
@@ -293,6 +354,8 @@ CobblemonEconomyApi.onReward(event -> {
 - Register listeners once, during mod initialisation. They run on the server thread; one that throws is logged and skipped.
 - `RewardEvent` gives the reward type, player, amount, whether the Pokémon was an alpha, the level, the battle id and
   the NPC trainer entity (for trainer battles).
+- 1.2.0 (`API_VERSION >= 3`) adds the `DAILY_LOGIN` reward type: `milestone()` is which login day it is, the amount
+  is the day's coins, and cancelling it also withholds the day's items.
 
 ### Optional dependency
 
@@ -311,6 +374,10 @@ Requires JDK 21.
 ```
 
 Output: `build/libs_fabric/` and `build/libs_neoforge/`.
+
+Development runs also load Cobblemon Battle Plus to test the Trainer Card integration. They use the newest jar built in
+the sibling folder `../cobblemonbattleplus`, so build that project first. Pass `-Pdev_battle_plus=false` to run
+without it (see `gradle.properties`). On Fabric, Text Placeholder API is loaded too.
 
 ### Testing multiplayer locally
 

@@ -2,6 +2,7 @@ package com.diamo.cobblemoneconomyplus.client;
 
 import com.cobblemon.mod.common.CobblemonSounds;
 import com.diamo.cobblemoneconomyplus.economy.EconomyFormat;
+import com.diamo.cobblemoneconomyplus.network.EconomyPayloads;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
@@ -11,15 +12,19 @@ import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 
 /**
- * DRAFT: a Trainer Card shown when right-clicking the Trainer Card item - a first sketch of an "info item"
- * (name, trainer id, balance). More fields (party size, badges, playtime...) can be added as rows later.
+ * The Trainer Card shown when right-clicking the Trainer Card item: name, trainer id, Pokédex / play time / balance
+ * rank (sent by the server when the card opens), the balance and, with Cobblemon Battle Plus, the Battle Points.
  */
 public final class TrainerCardScreen extends Screen {
     private static final int WIDTH = 220;
-    private static final int BASE_HEIGHT = 120;
+    private static final int BASE_HEIGHT = 156;
     /** Extra height for the Battle Points strip, shown when the server has Cobblemon Battle Plus. */
     private static final int POINTS_ROW = 24;
-    private static final int WALLET_Y = 92;
+    private static final int STATS_Y = 96;
+    private static final int STATS_HEIGHT = 26;
+    private static final int STATS_GAP = 4;
+    private static final int WALLET_Y = 128;
+    private static final long TICKS_PER_MINUTE = 20L * 60L;
 
     private static final int OUTLINE = 0xFF16181D;
     private static final int RED = 0xFFD8393B;
@@ -38,11 +43,13 @@ public final class TrainerCardScreen extends Screen {
     private static final int BP_BLUE_DARK = 0xFF23458F;
     private static final int BP_TEXT = 0xFF2A4FA0;
 
+    private final EconomyPayloads.TrainerCardPayload stats;
     private double shown;
     private double shownPoints;
 
-    public TrainerCardScreen() {
+    public TrainerCardScreen(EconomyPayloads.TrainerCardPayload stats) {
         super(Component.translatable("item.cobblemon_economy_plus.trainer_card"));
+        this.stats = stats;
         this.shown = ClientEconomy.balance();
         this.shownPoints = Math.max(0, ClientEconomy.battlePoints());
     }
@@ -112,6 +119,19 @@ public final class TrainerCardScreen extends Screen {
         g.drawString(font, Component.translatable("gui.cobblemon_economy_plus.card_id"), fx, y + 62, MUTED, false);
         g.drawString(font, String.format("%08X", player.getUUID().hashCode()), fx, y + 72, INK, false);
 
+        // Stats: Pokédex, play time, balance rank.
+        int cellWidth = (WIDTH - 16 - 2 * STATS_GAP) / 3;
+        int statsY = y + STATS_Y;
+        drawStat(g, x + 8, statsY, cellWidth, Component.translatable("gui.cobblemon_economy_plus.card_pokedex"),
+                Component.literal(EconomyFormat.money(stats.caughtSpecies())));
+        drawStat(g, x + 8 + cellWidth + STATS_GAP, statsY, cellWidth,
+                Component.translatable("gui.cobblemon_economy_plus.card_play_time"), playTime(stats.playTicks()));
+        drawStat(g, x + 8 + 2 * (cellWidth + STATS_GAP), statsY, cellWidth,
+                Component.translatable("gui.cobblemon_economy_plus.card_rank"),
+                stats.rank() > 0
+                        ? Component.translatable("gui.cobblemon_economy_plus.card_rank_value", stats.rank())
+                        : Component.literal("-"));
+
         // Wallet strip.
         int walletY = y + WALLET_Y;
         drawStrip(g, x, walletY);
@@ -154,6 +174,25 @@ public final class TrainerCardScreen extends Screen {
     private static double approach(double shownValue, double target) {
         double diff = target - shownValue;
         return shownValue + (Math.abs(diff) < 1.0D ? diff : diff * 0.18D);
+    }
+
+    private void drawStat(GuiGraphics g, int cellX, int cellY, int cellWidth, Component label, Component value) {
+        cutRect(g, cellX, cellY, cellWidth, STATS_HEIGHT, 3, LINE);
+        cutRect(g, cellX + 1, cellY + 1, cellWidth - 2, STATS_HEIGHT - 2, 2, BODY_DARK);
+        String labelText = abbreviate(label.getString(), cellWidth - 6);
+        String valueText = abbreviate(value.getString(), cellWidth - 6);
+        g.drawString(font, labelText, cellX + (cellWidth - font.width(labelText)) / 2, cellY + 4, MUTED, false);
+        g.drawString(font, valueText, cellX + (cellWidth - font.width(valueText)) / 2, cellY + 14, INK, false);
+    }
+
+    /** "12h 34m", or only the hours from 100 hours on so the value fits its cell. */
+    private static Component playTime(long ticks) {
+        long minutes = ticks / TICKS_PER_MINUTE;
+        long hours = minutes / 60L;
+        if (hours >= 100L) {
+            return Component.translatable("gui.cobblemon_economy_plus.card_hours", EconomyFormat.money(hours));
+        }
+        return Component.translatable("gui.cobblemon_economy_plus.card_hours_minutes", hours, minutes % 60L);
     }
 
     private static void drawStrip(GuiGraphics g, int x, int stripY) {

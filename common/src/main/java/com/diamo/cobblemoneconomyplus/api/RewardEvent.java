@@ -70,13 +70,17 @@ public final class RewardEvent {
 
     /**
      * The level the amount was based on: the wild or captured Pokémon's level, or the highest level in the trainer's
-     * team. 0 for milestones.
+     * team. 0 for milestones and the login bonus.
      */
     public int level() {
         return level;
     }
 
-    /** For {@link RewardType#POKEDEX_MILESTONE}: the number of species caught that was reached. 0 otherwise. */
+    /**
+     * For {@link RewardType#POKEDEX_MILESTONE}: the number of species caught that was reached. For
+     * {@link RewardType#DAILY_LOGIN}: which login day it is (consecutive days, unless the server counts every login
+     * day; 1 = first). 0 otherwise.
+     */
     public int milestone() {
         return milestone;
     }

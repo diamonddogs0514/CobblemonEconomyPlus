@@ -51,6 +51,12 @@ public final class CobblemonEconomyPlusNeoForge {
         registrar.playToClient(EconomyPayloads.BalancePayload.TYPE, EconomyPayloads.BalancePayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() -> ClientPayloadBridge.handleBalance(payload))
         );
+        registrar.playToClient(EconomyPayloads.DailyLoginPayload.TYPE, EconomyPayloads.DailyLoginPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> ClientPayloadBridge.handleDailyLogin(payload))
+        );
+        registrar.playToClient(EconomyPayloads.TrainerCardPayload.TYPE, EconomyPayloads.TrainerCardPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> ClientPayloadBridge.handleTrainerCard(payload))
+        );
         registrar.playToClient(EconomyPayloads.OpenShopPayload.TYPE, EconomyPayloads.OpenShopPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() -> ClientPayloadBridge.handleOpenShop(payload))
         );

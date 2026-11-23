@@ -125,7 +125,62 @@ class RewardConfigTest {
     }
 
     @Test
+    void loginBonusDaysAreReadWithTheirItems() {
+        RewardConfig.DailyLogin defaults = RewardConfig.defaults().dailyLogin();
+        assertEquals(28, defaults.days().size(), "four weeks");
+        assertEquals(500L, defaults.days().get(6).coins());
+        assertEquals(2, defaults.days().get(6).items().size());
+        assertEquals(1000L, defaults.days().get(27).coins());
+
+        List<ConfigMessage> warnings = new ArrayList<>();
+        RewardConfig.DailyLogin login = parse("""
+                { "daily_login": { "repeat": false, "days": [
+                    { "coins": 10 },
+                    { "items": [ { "item": "minecraft:apple", "count": 3 }, { "item": "minecraft:stone", "count": 0 } ] },
+                    "oops"
+                ] } }
+                """, warnings).dailyLogin();
+        assertEquals(2, warnings.size(), warnings::toString);
+        assertEquals(3, login.days().size());
+        assertEquals(List.of(new RewardConfig.LoginItem(
+                net.minecraft.resources.ResourceLocation.parse("minecraft:apple"), 3)), login.days().get(1).items());
+        assertEquals(0L, login.days().get(2).coins(), "an unreadable day pays nothing but keeps its place");
+        assertTrue(login.enabled() && login.showScreen() && login.resetOnMiss());
+
+        warnings.clear();
+        assertEquals(28, parse("{ \"daily_login\": { \"days\": [] } }", warnings).dailyLogin().days().size(),
+                "an empty list falls back to the default days");
+        assertEquals(1, warnings.size());
+    }
+
+    @Test
+    void loginDaysRepeatOrStayOnTheLastDay() {
+        RewardConfig.DailyLogin repeating = RewardConfig.defaults().dailyLogin();
+        assertEquals(0, repeating.dayIndex(1));
+        assertEquals(27, repeating.dayIndex(28));
+        assertEquals(0, repeating.dayIndex(29));
+        RewardConfig.DailyLogin staying = new RewardConfig.DailyLogin(true, true, true, false, repeating.days());
+        assertEquals(27, staying.dayIndex(29));
+        assertEquals(27, staying.dayIndex(100));
+    }
+
+    @Test
+    void loginCountFollowsTheMissRule() {
+        assertEquals(0, RewardRules.loginCount(100, 3, 100, true), "already paid today");
+        assertEquals(4, RewardRules.loginCount(99, 3, 100, true));
+        assertEquals(1, RewardRules.loginCount(97, 3, 100, true), "a missed day starts over");
+        assertEquals(4, RewardRules.loginCount(97, 3, 100, false), "or every login day counts");
+    }
+
+    @Test
     void savedDataKeepsClaimedMilestonesAndTodaysTotal() {
+        UUID loginPlayer = UUID.randomUUID();
+        RewardSavedData withLogin = new RewardSavedData();
+        withLogin.recordLogin(loginPlayer, 20_000L, 5);
+        RewardSavedData.LoginStreak streak = RewardSavedData.load(
+                withLogin.save(new net.minecraft.nbt.CompoundTag(), null), null).lastLogin(loginPlayer);
+        assertEquals(new RewardSavedData.LoginStreak(20_000L, 5), streak);
+
         UUID player = UUID.randomUUID();
         RewardSavedData data = new RewardSavedData();
         data.claimMilestone(player, 10);

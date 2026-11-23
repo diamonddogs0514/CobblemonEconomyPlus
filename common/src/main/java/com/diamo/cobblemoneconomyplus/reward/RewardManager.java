@@ -4,6 +4,7 @@ import com.diamo.cobblemoneconomyplus.CobblemonEconomyPlus;
 import com.diamo.cobblemoneconomyplus.config.ConfigMessage;
 import com.diamo.cobblemoneconomyplus.config.ConfigResult;
 import com.diamo.cobblemoneconomyplus.shop.ShopManager;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.MinecraftServer;
 
 import java.io.IOException;
@@ -43,6 +44,7 @@ public final class RewardManager {
             }
             RewardConfig parsed = read(Files.readString(path, StandardCharsets.UTF_8), errors, warnings);
             if (parsed != null) {
+                checkItems(parsed, warnings);
                 config = parsed;
             } else if (firstLoad) {
                 config = RewardConfig.defaults();
@@ -75,7 +77,10 @@ public final class RewardManager {
             return new ConfigResult(errors, warnings);
         }
         try {
-            read(Files.readString(path, StandardCharsets.UTF_8), errors, warnings);
+            RewardConfig parsed = read(Files.readString(path, StandardCharsets.UTF_8), errors, warnings);
+            if (parsed != null) {
+                checkItems(parsed, warnings);
+            }
         } catch (IOException exception) {
             errors.add(ShopManager.cannotRead(path, exception).inFile(FILE_NAME));
         }
@@ -93,6 +98,20 @@ public final class RewardManager {
             fileWarnings.forEach(warning -> warnings.add(warning.inFile(FILE_NAME)));
             errors.add(ShopManager.describe(exception).inFile(FILE_NAME));
             return null;
+        }
+    }
+
+    /** Reports login bonus items that do not exist (they are skipped when the bonus is paid). */
+    private static void checkItems(RewardConfig parsed, List<ConfigMessage> warnings) {
+        List<RewardConfig.LoginDay> days = parsed.dailyLogin().days();
+        for (int index = 0; index < days.size(); index++) {
+            for (RewardConfig.LoginItem item : days.get(index).items()) {
+                if (!BuiltInRegistries.ITEM.containsKey(item.item())) {
+                    warnings.add(ConfigMessage.of("login_unknown_item",
+                            "daily_login.days: unknown item '%s' on day %s; it is not given",
+                            item.item().toString(), index + 1).inFile(FILE_NAME));
+                }
+            }
         }
     }
 

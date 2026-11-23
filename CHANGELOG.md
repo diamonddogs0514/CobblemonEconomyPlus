@@ -6,10 +6,26 @@
 - Cobblemon Battle Plus support (optional): the Trainer Card shows the player's Battle Points under the balance,
   kept up to date as they change (Battle Plus 3.1.0 or newer; older versions refresh with the balance). Without
   Battle Plus the card is unchanged.
+- The Trainer Card is no longer a draft: it also shows the number of species in the player's Pokédex, their play time
+  and their place in the balance ranking (`/cep top`). The server sends these when the card is opened.
+- Daily login bonus, configured as `daily_login` in `rewards.json`: a calendar of 1 to 60 days, each paying coins
+  and/or items (any item id). The first login of each day pays the next day and opens a calendar screen showing every
+  day's rewards, the days already received and today. Options: `reset_on_miss` (a missed day starts again from day 1),
+  `repeat` (start over after the last day) and `show_screen`. The default is a 4-week calendar (100 to 1,000 coins, with
+  balls, medicine and candies, and an Ability Capsule on day 28); it is on by default (`"enabled": false` turns it off) and does not count
+  towards `daily_cap`. The login count is saved in `data/cobblemon_economy_plus_rewards.dat` (data version 2).
+- `/cep daily` shows the calendar, and pays today's bonus if the player has not received it yet (for example after
+  staying online past midnight). Permission node `cobblemon_economy_plus.daily` (everyone by default).
+- Text Placeholder API support (Fabric, optional): `%cobblemon_economy_plus:balance%`, `balance_raw`, `rank`,
+  `top_name N` and `top_balance N`.
+- API: the `DAILY_LOGIN` reward type, so other mods can cancel or change the login bonus. `API_VERSION` is now 3.
 
 ### Changed
-- The balance packet also carries the Battle Points, so `PROTOCOL_VERSION` is now `1.2`: server and client must both
-  run 1.2.0.
+- The balance packet also carries the Battle Points, and the Trainer Card and the login bonus calendar have their own
+  packets, so `PROTOCOL_VERSION`
+  is now `1.2`: server and client must both run 1.2.0.
+- Development runs load Cobblemon Battle Plus (the newest jar built in `../cobblemonbattleplus`) and, on Fabric,
+  Text Placeholder API. Pass `-Pdev_battle_plus=false` to run without Battle Plus.
 
 ## 1.1.0 - 2026-11-23
 

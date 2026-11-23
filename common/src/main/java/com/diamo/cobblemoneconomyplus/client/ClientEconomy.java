@@ -45,8 +45,32 @@ public final class ClientEconomy {
         applyBalance(payload.balance());
     }
 
-    public static void openTrainerCard() {
-        Minecraft.getInstance().setScreen(new TrainerCardScreen());
+    public static void openTrainerCard(EconomyPayloads.TrainerCardPayload stats) {
+        Minecraft.getInstance().setScreen(new TrainerCardScreen(stats));
+    }
+
+    /** The login bonus calendar waiting for the world to finish loading (or for another screen to close). */
+    private static EconomyPayloads.DailyLoginPayload pendingDailyLogin;
+
+    public static void handleDailyLogin(EconomyPayloads.DailyLoginPayload payload) {
+        pendingDailyLogin = payload;
+        openPendingDailyLogin();
+    }
+
+    /** Called every client tick by the loaders. */
+    public static void clientTick() {
+        if (pendingDailyLogin != null) {
+            openPendingDailyLogin();
+        }
+    }
+
+    private static void openPendingDailyLogin() {
+        Minecraft minecraft = Minecraft.getInstance();
+        // Sent at login, while the loading screen is still up: open it once nothing else is on screen.
+        if (minecraft.player != null && minecraft.level != null && minecraft.screen == null) {
+            minecraft.setScreen(new DailyLoginScreen(pendingDailyLogin));
+            pendingDailyLogin = null;
+        }
     }
 
     /** Updates the remaining counts of a limited entry in the open shop screen (ignored when another screen is open). */

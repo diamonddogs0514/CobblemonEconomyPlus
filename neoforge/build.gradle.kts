@@ -12,6 +12,31 @@ dependencies {
     runtimeOnly("maven.modrinth:kotlin-for-forge:${rootProject.properties["kotlin_for_forge_version_id"]}")
     // Cobblemon's event API (subscribe) uses Kotlin types; Kotlin for Forge provides them at runtime.
     compileOnly("org.jetbrains.kotlin:kotlin-stdlib:${libs.versions.kotlin.get()}")
+
+    // Cobblemon Battle Plus for testing the Trainer Card integration (see gradle.properties).
+    val battlePlusJar = newestBattlePlusJar("neoforge")
+    if (battlePlusJar != null) {
+        logger.lifecycle("Development runs use Cobblemon Battle Plus: ${battlePlusJar.name}")
+        runtimeOnly(files(battlePlusJar))
+        listOf(
+            "dev.architectury:architectury-neoforge:${rootProject.properties["battle_plus_architectury_version"]}",
+            "curse.maven:radical-cobblemon-trainers-api-1152792:${rootProject.properties["battle_plus_rctapi_neoforge_file_id"]}",
+        ).forEach { runtimeOnly(it) { isTransitive = false } }
+    }
+}
+
+/** The newest Cobblemon Battle Plus jar built in battle_plus_dir, or null when disabled or not built. */
+fun newestBattlePlusJar(loader: String): File? {
+    if (!rootProject.properties["dev_battle_plus"].toString().toBoolean()) {
+        return null
+    }
+    val dir = rootProject.file(rootProject.properties["battle_plus_dir"].toString()).resolve("build/libs_$loader")
+    val jar = dir.listFiles { file -> Regex("cobblemonbattleplus-$loader-[0-9.]+-[0-9.]+\\.jar").matches(file.name) }
+        ?.maxByOrNull { it.lastModified() }
+    if (jar == null) {
+        logger.warn("No Cobblemon Battle Plus jar in $dir; development runs start without it")
+    }
+    return jar
 }
 
 val parchmentVersion = libs.versions.parchment.get()

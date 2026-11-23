@@ -16,18 +16,30 @@ public final class ClientPayloadBridge {
     private static Consumer<EconomyPayloads.AdminOpenPayload> adminOpenHandler;
     private static Consumer<EconomyPayloads.AdminStatusPayload> adminStatusHandler;
 
-    private static Runnable openCardHandler;
+    private static Consumer<EconomyPayloads.TrainerCardPayload> trainerCardHandler;
 
     private ClientPayloadBridge() {
     }
 
-    public static void setOpenCardHandler(Runnable handler) {
-        openCardHandler = Objects.requireNonNull(handler, "handler");
+    public static void setTrainerCardHandler(Consumer<EconomyPayloads.TrainerCardPayload> handler) {
+        trainerCardHandler = Objects.requireNonNull(handler, "handler");
     }
 
-    public static void openCard() {
-        if (openCardHandler != null) {
-            openCardHandler.run();
+    private static Consumer<EconomyPayloads.DailyLoginPayload> dailyLoginHandler;
+
+    public static void setDailyLoginHandler(Consumer<EconomyPayloads.DailyLoginPayload> handler) {
+        dailyLoginHandler = Objects.requireNonNull(handler, "handler");
+    }
+
+    public static void handleDailyLogin(EconomyPayloads.DailyLoginPayload payload) {
+        if (dailyLoginHandler != null) {
+            dailyLoginHandler.accept(payload);
+        }
+    }
+
+    public static void handleTrainerCard(EconomyPayloads.TrainerCardPayload payload) {
+        if (trainerCardHandler != null) {
+            trainerCardHandler.accept(payload);
         }
     }
 

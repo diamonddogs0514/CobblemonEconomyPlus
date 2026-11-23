@@ -1,5 +1,7 @@
 package com.diamo.cobblemoneconomyplus.economy;
 
+import net.minecraft.server.MinecraftServer;
+
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -21,6 +23,31 @@ public final class BalanceRanking {
 
     private BalanceRanking(List<Entry> entries) {
         this.entries = entries;
+    }
+
+    /** How long {@link #cached} reuses a ranking: placeholders may be asked for it every tick. */
+    private static final long CACHE_NANOS = 5_000_000_000L;
+    private static BalanceRanking cached;
+    private static MinecraftServer cachedServer;
+    private static long cachedAt;
+
+    /**
+     * The server's ranking, recomputed at most every few seconds. For displays (Trainer Card, placeholders);
+     * {@code /cep top} computes a fresh one.
+     */
+    public static synchronized BalanceRanking cached(MinecraftServer server) {
+        long now = System.nanoTime();
+        if (cached == null || cachedServer != server || now - cachedAt > CACHE_NANOS) {
+            cached = of(EconomySavedData.get(server).balances());
+            cachedServer = server;
+            cachedAt = now;
+        }
+        return cached;
+    }
+
+    /** The entry at a 1-based position (not rank: tied players have their own positions). */
+    public Optional<Entry> at(int position) {
+        return position < 1 || position > entries.size() ? Optional.empty() : Optional.of(entries.get(position - 1));
     }
 
     public static BalanceRanking of(Map<UUID, Long> balances) {

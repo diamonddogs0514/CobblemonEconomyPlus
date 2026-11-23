@@ -25,10 +25,10 @@ import java.util.function.Consumer;
 public final class CobblemonEconomyApi {
     /**
      * Raised whenever methods are added (never removed within a major version of the mod). 1 = 1.0.0;
-     * 2 = 1.1.0 ({@link #onBalanceChanged}, {@link #onReward}). Optional integrations can check it before using newer
-     * methods.
+     * 2 = 1.1.0 ({@link #onBalanceChanged}, {@link #onReward}); 3 = 1.2.0 ({@link RewardType#DAILY_LOGIN}). Optional
+     * integrations can check it before using newer methods.
      */
-    public static final int API_VERSION = 2;
+    public static final int API_VERSION = 3;
 
     private static final String DEFAULT_REASON = "api";
 

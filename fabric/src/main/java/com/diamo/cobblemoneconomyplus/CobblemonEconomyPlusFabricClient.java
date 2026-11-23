@@ -8,6 +8,7 @@ import com.diamo.cobblemoneconomyplus.network.EconomyPayloads;
 import com.diamo.cobblemoneconomyplus.platform.ClientPayloadBridge;
 import com.diamo.cobblemoneconomyplus.platform.PlatformNetworking;
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 
@@ -21,11 +22,19 @@ public final class CobblemonEconomyPlusFabricClient implements ClientModInitiali
         ClientPayloadBridge.setOpenShopHandler(ClientEconomy::handleOpenShop);
         ClientPayloadBridge.setEntryUpdateHandler(ClientEconomy::handleEntryUpdate);
         ClientPayloadBridge.setAdminHandlers(ClientEconomy::handleAdminOpen, ClientEconomy::handleAdminStatus);
-        ClientPayloadBridge.setOpenCardHandler(ClientEconomy::openTrainerCard);
+        ClientPayloadBridge.setTrainerCardHandler(ClientEconomy::openTrainerCard);
+        ClientPayloadBridge.setDailyLoginHandler(ClientEconomy::handleDailyLogin);
+        ClientTickEvents.END_CLIENT_TICK.register(client -> ClientEconomy.clientTick());
         KeyBindingHelper.registerKeyBinding(HudKeys.SHOW_BALANCE);
 
         ClientPlayNetworking.registerGlobalReceiver(EconomyPayloads.BalancePayload.TYPE, (payload, context) ->
                 context.client().execute(() -> ClientPayloadBridge.handleBalance(payload))
+        );
+        ClientPlayNetworking.registerGlobalReceiver(EconomyPayloads.DailyLoginPayload.TYPE, (payload, context) ->
+                context.client().execute(() -> ClientPayloadBridge.handleDailyLogin(payload))
+        );
+        ClientPlayNetworking.registerGlobalReceiver(EconomyPayloads.TrainerCardPayload.TYPE, (payload, context) ->
+                context.client().execute(() -> ClientPayloadBridge.handleTrainerCard(payload))
         );
         ClientPlayNetworking.registerGlobalReceiver(EconomyPayloads.OpenShopPayload.TYPE, (payload, context) ->
                 context.client().execute(() -> ClientPayloadBridge.handleOpenShop(payload))

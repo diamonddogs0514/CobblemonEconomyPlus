@@ -1,8 +1,8 @@
 package com.diamo.cobblemoneconomyplus.content;
 
-import com.diamo.cobblemoneconomyplus.platform.ClientPayloadBridge;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.player.Player;
@@ -13,7 +13,7 @@ import net.minecraft.world.level.Level;
 
 import java.util.List;
 
-/** DRAFT: right-click to open a Trainer Card with the player's balance (client-side; the balance is already synced). */
+/** Right-click to open the Trainer Card: the server collects the stats and opens it on the client. */
 public final class TrainerCardItem extends Item {
     public TrainerCardItem(Properties properties) {
         super(properties.stacksTo(1));
@@ -27,8 +27,8 @@ public final class TrainerCardItem extends Item {
 
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
-        if (level.isClientSide) {
-            ClientPayloadBridge.openCard();
+        if (player instanceof ServerPlayer serverPlayer) {
+            TrainerCardService.open(serverPlayer);
         }
         return InteractionResultHolder.sidedSuccess(player.getItemInHand(hand), level.isClientSide);
     }
